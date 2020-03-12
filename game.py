@@ -137,14 +137,15 @@ class King(Piece):
                 if (a, b) != (x, y):
                     yield [(a, b)]               
     def _die(self):
-        for piece in self.board.values():
+        for piece in list(self.board.values()):
             if piece is not self and piece.player == self.player:
                 piece.die()
 
 class Pawn(Piece):
     sight_color = (0.5, 0.5, 0.5)
     egg_time = 60
-    def move(self, (x, y)):
+    def move(self, xxx_todo_changeme):
+        (x, y) = xxx_todo_changeme
         if not super(Pawn, self).move((x, y)):
             return False
         if (self.side() == 0 and y == 7) or (self.side() == 1 and y == 0):
@@ -265,7 +266,8 @@ class Game(object):
     def add_action(self, act_type, *params):
         self.cur_actions.append((act_type, params))
 
-    def in_bounds(self, (x, y)):
+    def in_bounds(self, xxx_todo_changeme1):
+        (x, y) = xxx_todo_changeme1
         return 0 <= x < self.board_size[0] and 0 <= y < self.board_size[1]
 
     def nick(self, id):
@@ -360,7 +362,8 @@ class Game(object):
         x, y = event.pos
         self.mouse_pos = (x-self.board_pos[0])//S, (y-self.board_pos[1])//S
 
-    def screen_pos(self, (x, y)):
+    def screen_pos(self, xxx_todo_changeme2):
+        (x, y) = xxx_todo_changeme2
         return self.board_pos[0]+S*x, self.board_pos[1]+S*y
 
     @quiet_action
@@ -378,7 +381,7 @@ class Game(object):
     @quiet_action
     def action_move(self, id, src, dst):
         if not self.started and not self.is_replay and [] != self.peers:
-            if len(set(x for x in self.who_is_who.values() if x is not None)) == self.num_players:
+            if len(set(x for x in list(self.who_is_who.values()) if x is not None)) == self.num_players:
                 self.started = True
                 self.last_start = self.counter
             else:
@@ -460,7 +463,7 @@ class Game(object):
         
         movesee = {}
         see = set()
-        for piece in self.board.itervalues():
+        for piece in self.board.values():
             if self.player is not None and piece.side() != self.player%2:
                 continue
             see.add(piece.pos)
@@ -473,24 +476,24 @@ class Game(object):
             for dst in itertools.chain(piece.sight()):
                 see.add(dst)
                 if piece.player == self.player and dst in moves:
-                    movesee[dst] = map(operator.add, movesee.get(dst, [0]*3), piece.sight_color)
+                    movesee[dst] = list(map(operator.add, movesee.get(dst, [0]*3), piece.sight_color))
         
         display.fill((0, 0, 0))
         cols = {}
         for pos in see:
             cols[pos] = (240, 240, 240)
-        for pos, col in movesee.iteritems():
+        for pos, col in movesee.items():
             cols[pos] = [128+a*127./max(col) for a in col]
-        for pos, col in flash.iteritems():
+        for pos, col in flash.items():
             cols[pos] = [255*x for x in col]
             
-        for (x, y), col in cols.iteritems():
+        for (x, y), col in cols.items():
             sx, sy = self.screen_pos((x, y))
             if (x, y) in self.board and self.board[x, y].freeze_until > self.counter:
                 display.subsurface([sx+3, sy+3, S-7, S-7]).fill(col)
             else:
                 display.subsurface([sx, sy, S-1, S-1]).fill(col)
-        for pos, piece in self.board.iteritems():
+        for pos, piece in self.board.items():
             if pos not in see:
                 continue
             transparent = False
@@ -525,7 +528,7 @@ class Game(object):
             return
         self.is_dragging = False
         self.potential_pieces = []
-        for piece in self.board.itervalues():
+        for piece in self.board.values():
             if piece.player == self.player and self.mouse_pos in piece.moves():
                 self.potential_pieces.append(piece)
         self.potential_pieces.sort(key = lambda x: x.move_preference)
