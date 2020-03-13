@@ -1,6 +1,5 @@
 import pygame
 import random
-import pdb
 import itertools
 import operator
 import sys
@@ -23,6 +22,7 @@ def toggle_fullscreen():
     else:
         flags = 0
     display = pygame.display.set_mode(resolution, flags)
+
 is_fullscreen = True
 toggle_fullscreen()
 
@@ -33,7 +33,7 @@ font = pygame.font.SysFont(pygame.font.get_default_font(), fontsize)
 text_pos = (0, 600-fontsize)
 num_msg_lines = 6
 
-class Piece(object):
+class Piece:
     freeze_time = 80
     last_move_time = 0
     last_pos = (3.5, 3.5)
@@ -135,7 +135,7 @@ class King(Piece):
         for a in range(x-1, x+2):
             for b in range(y-1, y+2):
                 if (a, b) != (x, y):
-                    yield [(a, b)]               
+                    yield [(a, b)]
     def _die(self):
         for piece in list(self.board.values()):
             if piece is not self and piece.player == self.player:
@@ -155,13 +155,13 @@ class Pawn(Piece):
     def sight(self):
         for pos in super(Pawn, self).sight():
             yield pos
-        delta = [1, -1][self.side()]
+        delta = -1 if self.side() else 1
         x, y = self.pos
         for a in [x-1, x+1]:
             if self.game.in_bounds((a, y+delta)):
                 yield a, y+delta
     def _moves(self, x, y):
-        start_row, delta = [(1, 1), (6, -1)][self.side()]
+        start_row, delta = (6, -1) if self.side() else (1, 1)
         m = [(x, y+delta)]
         if y == start_row:
             m.append((x, y+2*delta))
@@ -207,14 +207,11 @@ def quiet_action(func):
 
 def c_ceil_div(x, d):
     r = (abs(x)+d-1)//d
-    if x < 0:
-        return -r
-    else:
-        return r
+    return -r if x < 0 else r
 
-class Game(object):
+class Game:
     player_freeze_time = 20
-    
+
     def __init__(self):
         self.id = random.randrange(2**64)
         self.nicknames = {}
@@ -268,9 +265,9 @@ class Game(object):
     def in_bounds(self, pos):
         return 0 <= pos[0] < self.board_size[0] and 0 <= pos[1] < self.board_size[1]
 
-    def nick(self, id):
-        return self.nicknames.get(id, 'anonymouse')
-        
+    def nick(self, i):
+        return self.nicknames.get(i, 'anonymouse')
+
     event_handlers = []
 
     @event_handlers.append
@@ -286,7 +283,7 @@ class Game(object):
 
     @event_handlers.append
     def K_DELETE(self):
-      self.entry = ''  
+        self.entry = ''
 
     @event_handlers.append
     def K_RETURN(self):
@@ -309,12 +306,12 @@ class Game(object):
         if self.started or self.is_replay:
             self.messages.append('Cannot change player after start!')
             return
-        if self.player == None:
+        if self.player is None:
             player = 0
         else:
             player = self.player+1
         if player == self.num_players:
-           player = None
+            player = None
         self.add_action('become', player)
 
     @event_handlers.append
@@ -328,7 +325,7 @@ class Game(object):
     @event_handlers.append
     def MOUSEBUTTONDOWN(self, event):
         self.calc_mouse_pos(event)
-        if 1 == event.button:
+        if event.button == 1:
             if self.mouse_pos in self.board and self.board[self.mouse_pos].player == self.player:
                 self.is_dragging = True
                 self.selected = self.board[self.mouse_pos]
@@ -336,7 +333,7 @@ class Game(object):
         if [] == self.potential_pieces:
             return
         d = 1
-        if 4 == event.button:
+        if event.button == 4:
             d = -1
         self.selected = self.potential_pieces[
             (self.potential_pieces.index(self.selected)+d)%len(self.potential_pieces)]
@@ -349,7 +346,7 @@ class Game(object):
     def MOUSEBUTTONUP(self, event):
         self.calc_mouse_pos(event)
         self.is_dragging = False
-        if 1 != event.button or self.selected is None or self.dst_pos is None:
+        if event.button != 1 or self.selected is None or self.dst_pos is None:
             return
         self.add_action('move', self.selected.pos, self.dst_pos)
         self.selected = None
@@ -364,19 +361,19 @@ class Game(object):
         return self.board_pos[0]+S*pos[0], self.board_pos[1]+S*pos[1]
 
     @quiet_action
-    def action_nick(self, id, *words):
+    def action_nick(self, i, *words):
         name = '-'.join(words)
-        if '' == name:
+        if not name:
             name = 'null-boy'
-        self.messages.append(self.nick(id) + ' is now ' + name)
-        self.nicknames[id] = name
+        self.messages.append(self.nick(i) + ' is now ' + name)
+        self.nicknames[i] = name
 
     @quiet_action
-    def action_msg(self, id, *txt):
-        self.messages.append('%s: %s' % (self.nick(id), ' '.join(txt)))
+    def action_msg(self, i, *txt):
+        self.messages.append('%s: %s' % (self.nick(i), ' '.join(txt)))
 
     @quiet_action
-    def action_move(self, id, src, dst):
+    def action_move(self, _id, src, dst):
         if not self.started and not self.is_replay and [] != self.peers:
             if len(set(x for x in list(self.who_is_who.values()) if x is not None)) == self.num_players:
                 self.started = True
@@ -388,20 +385,20 @@ class Game(object):
             self.board[src].move(dst)
 
     @quiet_action
-    def action_connect(self, id, host):
+    def action_connect(self, _id, host):
         self.socket.sendto(marshal.dumps((self.id, 'HELLO')), 0, (host, gameport))
         self.connecting = True
 
     @quiet_action
-    def action_welcome(self, id, peer, peer_id):
-        self.action_reset(id)
+    def action_welcome(self, i, peer, peer_id):
+        self.action_reset(i)
         if peer_id == self.id or peer in self.peers:
             return
         self.peers.append(peer)
         self.messages.append('connecting to %s' % (peer, ))
         self.add_action('nick', self.nick(self.id))
 
-    def action_reset(self, id, num_boards = 1):
+    def action_reset(self, _id, num_boards = 1):
         self.init_board(int(num_boards))
         self.player = None
         self.started = False
@@ -410,34 +407,34 @@ class Game(object):
         self.selected = None
         self.is_dragging = False
 
-    def action_forcestart(self, id):
+    def action_forcestart(self, _id):
         self.started = True
         self.last_start = self.counter
 
-    def action_replay(self, id):
+    def action_replay(self, i):
         if self.last_start is None:
             self.messages.append('NO GAME WAS PLAYED')
             return
-        self.iter_actions[self.counter][id] = [('endreplay', ())]
+        self.iter_actions[self.counter][i] = [('endreplay', ())]
         self.replay_counter = self.last_start
-        self.action_reset(id, self.num_boards)
+        self.action_reset(i, self.num_boards)
         self.is_replay = True
 
-    def action_endreplay(self, id):
+    def action_endreplay(self, _id):
         self.is_replay = False
 
     @quiet_action
-    def action_become(self, id, player):
-        if id == self.id:
+    def action_become(self, i, player):
+        if i == self.id:
             self.player = player
-        self.who_is_who[id] = player
+        self.who_is_who[i] = player
         if player is None:
             player_str = 'spectator'
         else:
             player_str = ['White', 'Black'][player%2]+'#'+str(player//2)
-        self.messages.append(self.nick(id) + ' becomes ' + player_str)
+        self.messages.append(self.nick(i) + ' becomes ' + player_str)
 
-    def action_credits(self, id):
+    def action_credits(self, _id):
         self.messages.extend('''Credits:
         Programming: Yair Chuchem
         Chess sets/Graphics: Armondo H. Marroquin and Eric Bentzen (http://www.enpassant.dk/chess/fonteng.htm)
@@ -445,7 +442,7 @@ class Game(object):
         Programming Infrastructure: Python (Guido van Rossum and friends), Pygame/SDL (Pete Shinners and friends)
         '''.split('\n'))
 
-    def action_help(self, id):
+    def action_help(self, _id):
         self.messages.extend('''Welcome to - Chess II: King Dugan's Revenge.
         commands: /help | /connect <host> | /reset [num-boards] | /nick <nickname> | /replay | /credits
         keys: F1=toggle-fullscreen | F2=choose-set | F3 = reset | F4 = 4-players
@@ -457,7 +454,7 @@ class Game(object):
         if flashy is not None and flashy.player == self.player:
             for pos in flashy.moves():
                 flash[pos] = flashy.sight_color
-        
+
         movesee = {}
         see = set()
         for piece in self.board.values():
@@ -474,7 +471,7 @@ class Game(object):
                 see.add(dst)
                 if piece.player == self.player and dst in moves:
                     movesee[dst] = list(map(operator.add, movesee.get(dst, [0]*3), piece.sight_color))
-        
+
         display.fill((0, 0, 0))
         cols = {}
         for pos in see:
@@ -483,7 +480,7 @@ class Game(object):
             cols[pos] = [128+a*127./max(col) for a in col]
         for pos, col in flash.items():
             cols[pos] = [255*x for x in col]
-            
+
         for (x, y), col in cols.items():
             sx, sy = self.screen_pos((x, y))
             if (x, y) in self.board and self.board[x, y].freeze_until > self.counter:
@@ -547,14 +544,14 @@ class Game(object):
         while poll(self.socket):
             packet, peer = self.socket.recvfrom(0x1000)
             peer_id, peer_iter_actions = marshal.loads(packet)
-            if 'HELLO' == peer_iter_actions:
+            if peer_iter_actions == 'HELLO':
                 self.add_action('welcome', peer, peer_id)
                 continue
             for i, actions in peer_iter_actions:
                 self.iter_actions.setdefault(i, {})[peer_id] = actions
                 if self.connecting:
-                    for action_type, params in actions:
-                        if 'welcome' == action_type:
+                    for action_type, _params in actions:
+                        if action_type == 'welcome':
                             self.connecting = False
                             self.counter = i
                             self.peers.append(peer)
@@ -572,29 +569,29 @@ class Game(object):
         if self.is_replay:
             all_actions += sorted(self.iter_actions[self.replay_counter].items())
             self.replay_counter += 1
-        for id, actions in all_actions:
+        for i, actions in all_actions:
             for action_type, params in actions:
                 action_func = getattr(self, 'action_'+action_type, None)
                 if action_func is None:
                     self.messages.append(action_type + ': no such action')
                 else:
                     if not hasattr(action_func, 'quiet'):
-                        self.messages.append(self.nick(id) + ' did ' + action_type.upper())
+                        self.messages.append(self.nick(i) + ' did ' + action_type.upper())
                     try:
-                        action_func(id, *params)
+                        action_func(i, *params)
                     except:
                         self.messages.append('action ' + action_type + ' failed')
         self.counter += 1
 
     def iteration(self):
         self.communicate()
-        
+
         if self.id not in self.iter_actions.setdefault(self.counter+latency, {}):
             self.iter_actions[self.counter+latency][self.id] = self.cur_actions
             self.cur_actions = []
 
         self.act()
-        
+
         pygame.event.pump()
         for event in pygame.event.get():
             if event.type in self.event_handlers:
@@ -607,4 +604,3 @@ game = Game()
 while True:
     game.iteration()
     clock.tick(30)
-
