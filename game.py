@@ -144,13 +144,12 @@ class King(Piece):
 class Pawn(Piece):
     sight_color = (0.5, 0.5, 0.5)
     egg_time = 60
-    def move(self, xxx_todo_changeme):
-        (x, y) = xxx_todo_changeme
-        if not super(Pawn, self).move((x, y)):
+    def move(self, pos):
+        if not super(Pawn, self).move(pos):
             return False
-        if (self.side() == 0 and y == 7) or (self.side() == 1 and y == 0):
+        if (self.side() == 0 and pos[1] == 7) or (self.side() == 1 and pos[1] == 0):
             self.die()
-            new_piece = Queen(self.player, (x, y), self.game)
+            new_piece = Queen(self.player, pos, self.game)
             new_piece.freeze_until = self.game.counter+self.egg_time
         return True
     def sight(self):
@@ -266,9 +265,8 @@ class Game(object):
     def add_action(self, act_type, *params):
         self.cur_actions.append((act_type, params))
 
-    def in_bounds(self, xxx_todo_changeme1):
-        (x, y) = xxx_todo_changeme1
-        return 0 <= x < self.board_size[0] and 0 <= y < self.board_size[1]
+    def in_bounds(self, pos):
+        return 0 <= pos[0] < self.board_size[0] and 0 <= pos[1] < self.board_size[1]
 
     def nick(self, id):
         return self.nicknames.get(id, 'anonymouse')
@@ -355,16 +353,15 @@ class Game(object):
             return
         self.add_action('move', self.selected.pos, self.dst_pos)
         self.selected = None
-   
+
     event_handlers = dict((getattr(pygame, func.__name__), func) for func in event_handlers)
 
     def calc_mouse_pos(self, event):
         x, y = event.pos
         self.mouse_pos = (x-self.board_pos[0])//S, (y-self.board_pos[1])//S
 
-    def screen_pos(self, xxx_todo_changeme2):
-        (x, y) = xxx_todo_changeme2
-        return self.board_pos[0]+S*x, self.board_pos[1]+S*y
+    def screen_pos(self, pos):
+        return self.board_pos[0]+S*pos[0], self.board_pos[1]+S*pos[1]
 
     @quiet_action
     def action_nick(self, id, *words):
