@@ -3,8 +3,6 @@ A networked real-time strategy game based on Chess
 '''
 
 import itertools
-from itertools import count
-
 import marshal
 import operator
 import random
@@ -13,7 +11,9 @@ import socket
 import sys
 
 import pygame
+import stun
 
+import addr_words
 import chess
 
 pygame.init()
@@ -39,10 +39,7 @@ clock = pygame.time.Clock()
 fontsize = 20
 font = pygame.font.SysFont(pygame.font.get_default_font(), fontsize)
 
-text_pos = (0, 600-fontsize)
 num_msg_lines = 6
-
-gameport = 33333
 
 def poll(sock):
     return select.select([sock], [], [], 0)[0] != []
@@ -53,6 +50,10 @@ latency = 5
 def quiet_action(func):
     func.quiet = True
     return func
+
+def centered_text(text, pos_top_y):
+    t = font.render(text, 255, (255, 255, 255))
+    display.blit(t, ((resolution[0] - t.get_width())//2, pos_top_y))
 
 class Game:
     player_freeze_time = 20
@@ -68,20 +69,31 @@ class Game:
         self.peers = []
         self.mouse_pos = None
         self.connecting = False
-        self.init_socket()
         self.action_reset(self.id)
-        self.action_help(self.id)
         self.last_start = None
         self.last_selected_at_dst = {}
         self.is_replay = False
         self.player_freeze = {}
-        try:
-            self.socket.bind(('', gameport))
-        except socket.error:
-            # Can't open local port, so probably another instance is running on same host.
-            # For development purposes - connect to that second instance on startup.
-            self.init_socket()
-            self.add_action('connect', 'localhost')
+        while True:
+            local_port = random.randint(1024, 65535)
+            try:
+                _nat_type, self.gamehost, self.gameport = stun.get_ip_info('0.0.0.0', local_port)
+                if self.gameport is None:
+                    print('retrying stun connection')
+                    continue
+                print('external host %s:%d' % (self.gamehost, self.gameport))
+                self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                self.socket.bind(('', local_port))
+                print('listening on port %d' % local_port)
+            except socket.error:
+                print('retrying establishing server')
+                continue
+            break
+        self.messages.append('Welcome to Chess 2!')
+        self.messages.append('')
+        self.help_address()
+        self.messages.append('')
+        self.messages.append('Type the address of a friend to play with them')
 
     def init_board(self, num_boards=1):
         '''
@@ -107,9 +119,6 @@ class Game:
         random.shuffle(a)
         random.shuffle(b)
         self.chess_sets_perm = [[a, b][i%2][i//2] for i in range(6)]
-
-    def init_socket(self):
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def add_action(self, act_type, *params):
         'Queue an action to be executed'
@@ -146,11 +155,19 @@ class Game:
 
     @event_handlers.append
     def K_RETURN(self):
-        if self.entry[:1] == '/':
-            self.add_action(*self.entry[1:].split())
-        else:
-            self.add_action('msg', self.entry)
+        command = self.entry
         self.entry = ''
+        if command[:1] == '/':
+            self.add_action(*command[1:].split())
+            return
+        addr = addr_words.words_to_address(command)
+        if addr is not None:
+            print('connecting to %s:%d' % addr)
+            host, port = addr
+            self.socket.sendto(marshal.dumps((self.id, 'HELLO')), 0, (host, port))
+            self.connecting = True
+            return
+        self.add_action('msg', command)
 
     @event_handlers.append
     def K_ESCAPE(self):
@@ -248,18 +265,15 @@ class Game:
             self.board[src].move(dst)
 
     @quiet_action
-    def action_connect(self, _id, host):
-        self.socket.sendto(marshal.dumps((self.id, 'HELLO')), 0, (host, gameport))
-        self.connecting = True
-
-    @quiet_action
     def action_welcome(self, i, peer, peer_id):
         self.action_reset(i)
         if peer_id == self.id or peer in self.peers:
             return
         self.peers.append(peer)
         self.messages.append('connecting to %s' % (peer, ))
-        self.add_action('nick', self.nick(self.id))
+        self.help_keys()
+        if self.id in self.nicknames:
+            self.add_action('nick', self.nick(self.id))
 
     def action_reset(self, _id, num_boards=1):
         self.init_board(int(num_boards))
@@ -306,10 +320,16 @@ class Game:
         '''.split('\n'))
 
     def action_help(self, _id):
-        self.messages.extend('''Welcome to Chess 2!
-        commands: /help | /connect <host> | /reset [num-boards] | /nick <nickname> | /replay | /credits
-        keys: F1=toggle-fullscreen | F2=choose-set | F3 = reset | F4 = 4-players
-        '''.split('\n'))
+        self.messages.append('commands: <host> | /help | /reset [num-boards] | /nick <nickname> | /replay | /credits')
+        self.help_keys()
+        self.help_address()
+
+    def help_keys(self):
+        self.messages.append('keys: F1=toggle-fullscreen | F2=choose-set | F3 = reset | F4 = 4-players')
+
+    def help_address(self):
+        self.messages.append('Your address is:')
+        self.messages.append(addr_words.address_to_words(self.gamehost, self.gameport))
 
     def show_board(self):
         display.fill((0, 0, 0))
@@ -337,14 +357,22 @@ class Game:
             if piece is self.selected:
                 transparent = True
             display.blit(piece.image(transparent), self.screen_pos(pos))
+
         if self.selected is not None and self.dst_pos is not None:
             display.blit(self.selected.image(transparent = True), self.screen_pos(self.dst_pos))
+
         if self.is_dragging:
             x, y = pygame.mouse.get_pos()
             display.blit(self.selected.image(transparent = True), (x-S//2, y-S//2))
-        display.blit(font.render('> '+self.entry, 255, (255, 255, 255)), text_pos)
+
+        (_, board_bottom) = self.screen_pos((0,8))
+        centered_text(
+            '> '+self.entry,
+            board_bottom + (resolution[1]-board_bottom-fontsize) // 2)
         for y, msg in enumerate(self.messages[-num_msg_lines:]):
-            display.blit(font.render(msg, 255, (255, 255, 255)), (0, fontsize*y))
+            sz = font.size(msg)
+            centered_text(msg, fontsize*y)
+
         pygame.display.flip()
 
     def board_info(self):
@@ -426,6 +454,7 @@ class Game:
                             self.counter = i
                             self.peers.append(peer)
                             self.messages.append('connection successful')
+                            self.help_keys()
         if was_connecting and not self.connecting:
             self.iter_actions = {}
 
