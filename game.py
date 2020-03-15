@@ -1,17 +1,26 @@
-import pygame
-import random
-import itertools
-import operator
-import sys
-import socket
-import marshal
-import select
+'''
+A networked real-time strategy game based on Chess
+'''
 
+import itertools
 from itertools import count
+
+import marshal
+import operator
+import random
+import select
+import socket
+import sys
+
+import pygame
 
 pygame.init()
 S = 45
 resolution = 800, 600
+
+display = pygame.display.set_mode(resolution, 0)
+
+is_fullscreen = False
 
 def toggle_fullscreen():
     global is_fullscreen, display
@@ -23,8 +32,6 @@ def toggle_fullscreen():
         flags = 0
     display = pygame.display.set_mode(resolution, flags)
 
-is_fullscreen = True
-toggle_fullscreen()
 
 clock = pygame.time.Clock()
 fontsize = 20
@@ -44,7 +51,7 @@ class Piece:
         self.game = game
         self.board = game.board
         game.board[pos] = self
-    def image(self, transparent = False):
+    def image(self, transparent=False):
         return self._images[self.game.chess_sets_perm[self.player]][transparent]
     def side(self):
         return self.player % 2
@@ -67,9 +74,9 @@ class Piece:
         self.freeze_until = self.game.counter+self.freeze_time
         self.game.player_freeze[self.player] = self.game.counter+self.game.player_freeze_time
         return True
-    def moves(self, with_freeze = True):
+    def moves(self, with_freeze=True):
         if with_freeze and self.game.counter < max(
-            self.freeze_until, self.game.player_freeze.get(self.player, 0)):
+                self.freeze_until, self.game.player_freeze.get(self.player, 0)):
             return
         for streak in self._moves(*self.pos):
             for dst in streak:
@@ -82,7 +89,7 @@ class Piece:
                 if dst in self.board:
                     break
     def sight(self):
-        return self.moves(with_freeze = False)
+        return self.moves(with_freeze=False)
 
 class Rook(Piece):
     sight_color = (0.5, 0.5, 1)
@@ -194,10 +201,12 @@ def init_piece_move_prefernce():
     for preference, piece in enumerate([King, Pawn, Knight, Bishop, Rook, Queen]):
         piece.move_preference = preference
 
+
 gameport = 33333
 
 def poll(sock):
     return select.select([sock], [], [], 0)[0] != []
+
 
 latency = 5
 
@@ -236,14 +245,14 @@ class Game:
             self.init_socket()
             self.add_action('connect', 'localhost')
 
-    def init_board(self, num_boards = 1):
+    def init_board(self, num_boards=1):
         self.num_boards = int(num_boards)
         self.board = {}
         self.board_size = [8*num_boards, 8]
         self.num_players = num_boards * 2
         for who, (x, y0, y1) in enumerate([(0, 0, 1), (0, 7, 6), (8, 0, 1), (8, 7, 6)][:self.num_players]):
             for dx, piece in enumerate(
-                [Rook, Knight, Bishop, King, Queen, Bishop, Knight, Rook]):
+                    [Rook, Knight, Bishop, King, Queen, Bishop, Knight, Rook]):
                 piece(who, (x+dx, y0), self)
                 Pawn(who, (x+dx, y1), self)
         self.board_pos = (resolution[0]-S*8*num_boards)//2, (resolution[1]-S*8)//2
@@ -290,7 +299,7 @@ class Game:
         if self.entry[:1] == '/':
             self.add_action(*self.entry[1:].split())
         else:
-            self.add_action('msg', self.entry) 
+            self.add_action('msg', self.entry)
         self.entry = ''
 
     @event_handlers.append
@@ -398,7 +407,7 @@ class Game:
         self.messages.append('connecting to %s' % (peer, ))
         self.add_action('nick', self.nick(self.id))
 
-    def action_reset(self, _id, num_boards = 1):
+    def action_reset(self, _id, num_boards=1):
         self.init_board(int(num_boards))
         self.player = None
         self.started = False
@@ -599,6 +608,7 @@ class Game:
 
         self.update_dst()
         self.show_board()
+
 
 game = Game()
 while True:
