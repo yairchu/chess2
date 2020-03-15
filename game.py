@@ -43,7 +43,9 @@ num_msg_lines = 6
 class Piece:
     freeze_time = 80
     last_move_time = 0
-    last_pos = (3.5, 3.5)
+
+    last_pos = (3.5, 3.5) # Initially animate from center of board
+
     def __init__(self, player, pos, game):
         self.player = player
         self.pos = pos
@@ -51,18 +53,26 @@ class Piece:
         self.game = game
         self.board = game.board
         game.board[pos] = self
+
     def image(self, transparent=False):
+        'Get image for piece. transparent flags for semi-transparent versions'
         return self._images[self.game.chess_sets_perm[self.player]][transparent]
+
     def side(self):
         return self.player % 2
+
     def die(self):
         if self.board[self.pos] == self:
             del self.board[self.pos]
-        self._die()
-    def _die(self):
+        self.on_die()
+
+    def on_die(self):
+        'Callback for actions on piece dying (overridden for King)'
         pass
+
     def move(self, pos):
         if self.board[self.pos] is not self or pos not in self.moves():
+            # Situation changed since move queued, can't perform this move!
             return False
         del self.board[self.pos]
         self.last_pos = self.pos
@@ -74,6 +84,7 @@ class Piece:
         self.freeze_until = self.game.counter+self.freeze_time
         self.game.player_freeze[self.player] = self.game.counter+self.game.player_freeze_time
         return True
+
     def moves(self, with_freeze=True):
         if with_freeze and self.game.counter < max(
                 self.freeze_until, self.game.player_freeze.get(self.player, 0)):
@@ -88,7 +99,9 @@ class Piece:
                     break
                 if dst in self.board:
                     break
+
     def sight(self):
+        'What squares can this piece see (overridden for Pawn)'
         return self.moves(with_freeze=False)
 
 class Rook(Piece):
@@ -143,7 +156,8 @@ class King(Piece):
             for b in range(y-1, y+2):
                 if (a, b) != (x, y):
                     yield [(a, b)]
-    def _die(self):
+
+    def on_die(self):
         for piece in list(self.board.values()):
             if piece is not self and piece.player == self.player:
                 piece.die()
@@ -181,26 +195,20 @@ class Pawn(Piece):
             if (a, y+delta) in self.board:
                 yield [(a, y+delta)]
 
-def run(func):
-    return func()
+pieces_image = pygame.image.load('chess.png')
 
-@run
-def init_piece_images():
-    pieces_image = pygame.image.load('chess.png')
-    transparent_pieces_image = pygame.image.load('chess.png')
-    for x in range(S*6):
-        for y in range(S*6):
-            r, g, b, a = transparent_pieces_image.get_at((x, y))
-            transparent_pieces_image.set_at((x, y), (r, g, b, a//2))
-    for x, piece in enumerate([King, Queen, Rook, Bishop, Knight, Pawn]):
-        piece._images = [[image.subsurface([S*x, S*y, S, S])
-                          for image in [pieces_image, transparent_pieces_image]] for y in range(6)]
+transparent_pieces_image = pieces_image.copy()
+for x in range(S*6):
+    for y in range(S*6):
+        r, g, b, a = transparent_pieces_image.get_at((x, y))
+        transparent_pieces_image.set_at((x, y), (r, g, b, a//2))
 
-@run
-def init_piece_move_prefernce():
-    for preference, piece in enumerate([King, Pawn, Knight, Bishop, Rook, Queen]):
-        piece.move_preference = preference
+for x, piece in enumerate([King, Queen, Rook, Bishop, Knight, Pawn]):
+    piece._images = [[image.subsurface([S*x, S*y, S, S])
+                        for image in [pieces_image, transparent_pieces_image]] for y in range(6)]
 
+for preference, piece in enumerate([King, Pawn, Knight, Bishop, Rook, Queen]):
+    piece.move_preference = preference
 
 gameport = 33333
 
@@ -213,10 +221,6 @@ latency = 5
 def quiet_action(func):
     func.quiet = True
     return func
-
-def c_ceil_div(x, d):
-    r = (abs(x)+d-1)//d
-    return -r if x < 0 else r
 
 class Game:
     player_freeze_time = 20
@@ -242,10 +246,17 @@ class Game:
         try:
             self.socket.bind(('', gameport))
         except socket.error:
+            # Can't open local port, so probably another instance is running on same host.
+            # For development purposes - connect to that second instance on startup.
             self.init_socket()
             self.add_action('connect', 'localhost')
 
     def init_board(self, num_boards=1):
+        '''
+        Initialize game.
+        Can initialize with more game boards for more players!
+        '''
+
         self.num_boards = int(num_boards)
         self.board = {}
         self.board_size = [8*num_boards, 8]
@@ -259,6 +270,7 @@ class Game:
         self.shuffle_sets()
 
     def shuffle_sets(self):
+        'Randomly change which chess piece images sets are used'
         a = [0, 2, 4]
         b = [1, 3, 5]
         random.shuffle(a)
@@ -269,10 +281,14 @@ class Game:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def add_action(self, act_type, *params):
+        'Queue an action to be executed'
         self.cur_actions.append((act_type, params))
 
     def in_bounds(self, pos):
-        return 0 <= pos[0] < self.board_size[0] and 0 <= pos[1] < self.board_size[1]
+        for x, s in zip(pos, self.board_size):
+            if not (0 <= x < s):
+                return False
+        return True
 
     def nick(self, i):
         return self.nicknames.get(i, 'anonymouse')
@@ -283,6 +299,9 @@ class Game:
     def KEYDOWN(self, event):
         if event.key in self.event_handlers:
             self.event_handlers[event.key](self)
+        elif event.key == pygame.K_q and (event.mod & pygame.KMOD_META) != 0:
+            # Cmd+Q (to quit on macs, todo: other platforms?)
+            sys.exit()
         elif 32 <= event.key < 128:
             self.entry += chr(event.key)
 
@@ -304,6 +323,10 @@ class Game:
 
     @event_handlers.append
     def K_ESCAPE(self):
+        sys.exit()
+
+    @event_handlers.append
+    def QUIT(self, _event):
         sys.exit()
 
     @event_handlers.append
@@ -452,43 +475,15 @@ class Game:
         '''.split('\n'))
 
     def action_help(self, _id):
-        self.messages.extend('''Welcome to - Chess II: King Dugan's Revenge.
+        self.messages.extend('''Welcome to Chess 2!
         commands: /help | /connect <host> | /reset [num-boards] | /nick <nickname> | /replay | /credits
         keys: F1=toggle-fullscreen | F2=choose-set | F3 = reset | F4 = 4-players
         '''.split('\n'))
 
     def show_board(self):
-        flash = {}
-        flashy = self.board.get(self.mouse_pos)
-        if flashy is not None and flashy.player == self.player:
-            for pos in flashy.moves():
-                flash[pos] = flashy.sight_color
-
-        movesee = {}
-        see = set()
-        for piece in self.board.values():
-            if self.player is not None and piece.side() != self.player%2:
-                continue
-            see.add(piece.pos)
-            if piece.player == self.player:
-                moves = set(piece.moves())
-                if self.mouse_pos in moves:
-                    flash[piece.pos] = piece.sight_color
-                else:
-                    movesee[piece.pos] = piece.sight_color
-            for dst in itertools.chain(piece.sight()):
-                see.add(dst)
-                if piece.player == self.player and dst in moves:
-                    movesee[dst] = list(map(operator.add, movesee.get(dst, [0]*3), piece.sight_color))
-
         display.fill((0, 0, 0))
-        cols = {}
-        for pos in see:
-            cols[pos] = (240, 240, 240)
-        for pos, col in movesee.items():
-            cols[pos] = [128+a*127./max(col) for a in col]
-        for pos, col in flash.items():
-            cols[pos] = [255*x for x in col]
+
+        cols, see = self.board_info()
 
         for (x, y), col in cols.items():
             sx, sy = self.screen_pos((x, y))
@@ -496,6 +491,7 @@ class Game:
                 display.subsurface([sx+3, sy+3, S-7, S-7]).fill(col)
             else:
                 display.subsurface([sx, sy, S-1, S-1]).fill(col)
+
         for pos, piece in self.board.items():
             if pos not in see:
                 continue
@@ -519,6 +515,40 @@ class Game:
         for y, msg in enumerate(self.messages[-num_msg_lines:]):
             display.blit(font.render(msg, 255, (255, 255, 255)), (0, fontsize*y))
         pygame.display.flip()
+
+    def board_info(self):
+        flash = {}
+        flashy = self.board.get(self.mouse_pos)
+        if flashy is not None and flashy.player == self.player:
+            for pos in flashy.moves():
+                flash[pos] = flashy.sight_color
+
+        movesee = {}
+        see = set()
+        for piece in self.board.values():
+            if self.player is not None and piece.side() != self.player%2:
+                continue
+            see.add(piece.pos)
+            if piece.player == self.player:
+                moves = set(piece.moves())
+                if self.mouse_pos in moves:
+                    flash[piece.pos] = piece.sight_color
+                else:
+                    movesee[piece.pos] = piece.sight_color
+            for dst in itertools.chain(piece.sight()):
+                see.add(dst)
+                if piece.player == self.player and dst in moves:
+                    movesee[dst] = list(map(operator.add, movesee.get(dst, [0]*3), piece.sight_color))
+
+        cols = {}
+        for pos in see:
+            cols[pos] = (240, 240, 240)
+        for pos, col in movesee.items():
+            cols[pos] = [128+a*127./max(col) for a in col]
+        for pos, col in flash.items():
+            cols[pos] = [255*x for x in col]
+
+        return cols, see
 
     last_pos = None
     def update_dst(self):
@@ -573,6 +603,8 @@ class Game:
             self.counter += 1
             return
         if len(self.iter_actions.get(self.counter, {})) <= len(self.peers):
+            # We haven't got communications from all peers for this iteration.
+            # So we'll wait.
             return
         all_actions = sorted(self.iter_actions[self.counter].items())
         if self.is_replay:
