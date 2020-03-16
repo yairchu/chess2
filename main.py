@@ -10,11 +10,11 @@ import select
 import socket
 import sys
 import threading
+import urllib.request
 
 import pygame
 import stun
 
-import addr_words
 import chess
 
 pygame.init()
@@ -89,11 +89,11 @@ class Game:
         while True:
             local_port = random.randint(1024, 65535)
             try:
-                _nat_type, self.gamehost, self.gameport = stun.get_ip_info('0.0.0.0', local_port)
-                if self.gameport is None:
+                _nat_type, gamehost, gameport = stun.get_ip_info('0.0.0.0', local_port)
+                if gameport is None:
                     print('retrying stun connection')
                     continue
-                print('external host %s:%d' % (self.gamehost, self.gameport))
+                print('external host %s:%d' % (gamehost, gameport))
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.bind(('', local_port))
                 print('listening on port %d' % local_port)
@@ -102,6 +102,9 @@ class Game:
                 continue
             break
         self.socket = sock
+        url = 'http://game-match.herokuapp.com/register/chess2/%s/%d/' % (gamehost, gameport)
+        print('registering at %s' % url)
+        self.address = urllib.request.urlopen(url).read()
         self.messages.append('')
         self.help_address()
         self.messages.append('')
@@ -172,16 +175,27 @@ class Game:
         if command[:1] == '/':
             self.add_action(*command[1:].split())
             return
-        addr = addr_words.words_to_address(command)
-        if addr is not None:
-            if self.socket is None:
-                return
-            print('connecting to %s:%d' % addr)
-            host, port = addr
-            self.socket.sendto(marshal.dumps((self.id, 'HELLO')), 0, (host, port))
-            self.connecting = True
+        if self.peers:
+            # Chat
+            self.add_action('msg', command)
             return
-        self.add_action('msg', command)
+        self.connect_thread = threading.Thread(target=self.connect_thread_go, args=(command, ))
+        self.connect_thread.start()
+
+    def connect_thread_go(self, addr):
+        url = 'http://game-match.herokuapp.com/lookup/chess2/%s/' % (addr.replace(' ', '%20'))
+        print('looking up host at %s' % url)
+        response = urllib.request.urlopen(url).read().decode('utf-8')
+        host, port_str = response.split(':')
+        port = int(port_str)
+        print('connecting to %s:%d' % (host, port))
+        if self.socket is None:
+            print('no socket yet!')
+            return
+        self.socket.sendto(marshal.dumps((self.id, 'HELLO')), 0, (host, port))
+        self.connecting = True
+        if self.socket is None:
+            return
 
     @event_handlers.append
     def K_ESCAPE(self):
@@ -345,7 +359,7 @@ class Game:
         if self.socket is None:
             return
         self.messages.append('Your address is:')
-        self.messages.append(addr_words.address_to_words(self.gamehost, self.gameport).upper())
+        self.messages.append(self.address.upper())
 
     def show_board(self):
         display.fill((0, 0, 0))
