@@ -20,9 +20,10 @@ Download the app from the [releases page](https://github.com/yairchu/chess2/rele
 
 Chess 2 is played vs friends over the network.
 
-* To connect, both players need to start the program
+* Both players need to open the game
 * At the top of each player an address such as "BASK DAWN ALAN" will appear
-* Any player needs to type the address of the other player to connect
+* Such an address can be sent over to the other player via any chat platform
+* The other player should type the address to connect
 
 ## Developing/building
 
