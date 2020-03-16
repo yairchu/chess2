@@ -9,6 +9,7 @@ import random
 import select
 import socket
 import sys
+import threading
 
 import pygame
 import stun
@@ -74,6 +75,17 @@ class Game:
         self.last_selected_at_dst = {}
         self.is_replay = False
         self.player_freeze = {}
+        self.messages.append('')
+        self.messages.append('Welcome to Chess 2!')
+        self.messages.append('Establishing server connection...')
+        self.socket = None
+        self.net_thread = threading.Thread(target=self.net_thread_go)
+        self.net_thread.start()
+
+    def net_thread_go(self):
+        self.setup_socket()
+
+    def setup_socket(self):
         while True:
             local_port = random.randint(1024, 65535)
             try:
@@ -82,14 +94,14 @@ class Game:
                     print('retrying stun connection')
                     continue
                 print('external host %s:%d' % (self.gamehost, self.gameport))
-                self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                self.socket.bind(('', local_port))
+                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                sock.bind(('', local_port))
                 print('listening on port %d' % local_port)
             except socket.error:
                 print('retrying establishing server')
                 continue
             break
-        self.messages.append('Welcome to Chess 2!')
+        self.socket = sock
         self.messages.append('')
         self.help_address()
         self.messages.append('')
@@ -162,6 +174,8 @@ class Game:
             return
         addr = addr_words.words_to_address(command)
         if addr is not None:
+            if self.socket is None:
+                return
             print('connecting to %s:%d' % addr)
             host, port = addr
             self.socket.sendto(marshal.dumps((self.id, 'HELLO')), 0, (host, port))
@@ -328,6 +342,8 @@ class Game:
         self.messages.append('keys: F1=toggle-fullscreen | F2=choose-set | F3 = reset | F4 = 4-players')
 
     def help_address(self):
+        if self.socket is None:
+            return
         self.messages.append('Your address is:')
         self.messages.append(addr_words.address_to_words(self.gamehost, self.gameport).upper())
 
@@ -433,6 +449,8 @@ class Game:
             self.last_pos = self.dst_pos
 
     def communicate(self):
+        if self.socket is None:
+            return
         packet = marshal.dumps((self.id,
                                 [(i, self.iter_actions.setdefault(i, {}).setdefault(self.id, []))
                                  for i in range(max(0, self.counter-latency), self.counter+latency)]))
