@@ -1,7 +1,7 @@
 from setuptools import setup
 
 OPTIONS = {
-    'packages': ['pygame', 'pystun3'],
+    'packages': ['pygame', 'stun'],
 }
 
 setup(
