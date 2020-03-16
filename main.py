@@ -5,10 +5,10 @@ A networked real-time strategy game based on Chess
 import itertools
 import marshal
 import operator
+import os
 import random
 import select
 import socket
-import sys
 import time
 import threading
 import urllib.request
@@ -61,36 +61,47 @@ class Game:
     player_freeze_time = 20
 
     def __init__(self):
+        self.done = False
         self.id = random.randrange(2**64)
         self.nicknames = {}
+        self.address = None
         self.entry = ''
         self.messages = []
         self.counter = 0
+        self.last_start = 0
         self.cur_actions = []
         self.iter_actions = {}
         self.peers = []
         self.mouse_pos = None
         self.action_reset(self.id)
-        self.last_start = None
         self.last_selected_at_dst = {}
         self.is_replay = False
+        self.player = 0
         self.player_freeze = {}
         self.messages.append('')
         self.messages.append('Welcome to Chess 2!')
         self.messages.append('Establishing server connection...')
         self.socket = None
-        self.net_thread = threading.Thread(target=self.net_thread_go)
-        self.net_thread.start()
+        self.threads = []
+        net_thread = threading.Thread(target=self.net_thread_go)
+        self.threads.append(net_thread)
+        net_thread.start()
 
     def net_thread_go(self):
         self.setup_socket()
+        if self.done:
+            return
         self.setup_addr_name()
+        if self.done:
+            return
         self.wait_for_connections()
 
     def setup_socket(self):
         while True:
             local_port = random.randint(1024, 65535)
             try:
+                if self.done:
+                    return
                 _nat_type, gamehost, gameport = stun.get_ip_info('0.0.0.0', local_port)
                 if gameport is None:
                     print('retrying stun connection')
@@ -111,13 +122,16 @@ class Game:
         print('registering at %s' % url)
         self.address = urllib.request.urlopen(url).read().decode('utf-8')
         self.messages.append('')
-        self.help_address()
+        self.messages.append('Your address is:')
+        self.messages.append(self.address.upper())
         self.messages.append('')
         self.messages.append('Type the address of a friend to play with them')
 
     def wait_for_connections(self):
         while not self.peers:
             time.sleep(5)
+            if self.done:
+                return
             url = 'http://game-match.herokuapp.com/lookup/chess2/%s/' % self.address.replace(' ', '%20')
             print('checking game at %s' % url)
             self.add_peers(urllib.request.urlopen(url).read().decode('utf-8'))
@@ -132,6 +146,9 @@ class Game:
                 continue
             print('established connection with %s:%d' % (host, port))
             self.peers.append((host, port))
+            self.messages.append('')
+            self.messages.append('Connection successful!')
+            self.messages.append('THE GAME BEGINS!')
 
     def init_board(self, num_boards=1):
         '''
@@ -179,7 +196,7 @@ class Game:
             self.event_handlers[event.key](self)
         elif event.key == pygame.K_q and (event.mod & pygame.KMOD_META) != 0:
             # Cmd+Q (to quit on macs, todo: other platforms?)
-            sys.exit()
+            self.done = True
         elif 32 <= event.key < 128:
             self.entry += chr(event.key)
 
@@ -204,46 +221,30 @@ class Game:
             # Chat
             self.add_action('msg', command)
             return
-        self.connect_thread = threading.Thread(target=self.connect_thread_go, args=(command, ))
-        self.connect_thread.start()
+        connect_thread = threading.Thread(target=self.connect_thread_go, args=(command, ))
+        self.threads.append(connect_thread)
+        connect_thread.start()
 
     def connect_thread_go(self, addr):
+        while self.address is None:
+            # Net thread didn't finish
+            time.sleep(1)
         url = 'http://game-match.herokuapp.com/connect/chess2/%s/%s/' % (self.address.replace(' ', '%20'), addr.replace(' ', '%20'))
         print('looking up host at %s' % url)
         self.add_peers(urllib.request.urlopen(url).read().decode('utf-8'))
+        self.player = 1
 
     @event_handlers.append
     def K_ESCAPE(self):
-        sys.exit()
+        self.done = True
 
     @event_handlers.append
     def QUIT(self, _event):
-        sys.exit()
-
-    @event_handlers.append
-    def K_F1(self):
-        toggle_fullscreen()
-
-    @event_handlers.append
-    def K_F2(self):
-        if self.started or self.is_replay:
-            self.messages.append('Cannot change player after start!')
-            return
-        if self.player is None:
-            player = 0
-        else:
-            player = self.player+1
-        if player == self.num_players:
-            player = None
-        self.add_action('become', player)
+        self.done = True
 
     @event_handlers.append
     def K_F3(self):
         self.add_action('reset', 1)
-
-    @event_handlers.append
-    def K_F4(self):
-        self.add_action('reset', 2)
 
     @event_handlers.append
     def MOUSEBUTTONDOWN(self, event):
@@ -269,7 +270,7 @@ class Game:
     def MOUSEBUTTONUP(self, event):
         self.calc_mouse_pos(event)
         self.is_dragging = False
-        if event.button != 1 or self.selected is None or self.dst_pos is None:
+        if event.button != 1 or self.selected is None or self.dst_pos is None or not self.peers:
             return
         self.add_action('move', self.selected.pos, self.dst_pos)
         self.selected = None
@@ -297,33 +298,19 @@ class Game:
 
     @quiet_action
     def action_move(self, _id, src, dst):
-        if not self.started and not self.is_replay and [] != self.peers:
-            if len(set(x for x in list(self.who_is_who.values()) if x is not None)) == self.num_players:
-                self.started = True
-                self.last_start = self.counter
-            else:
-                self.messages.append('CANNOT START WITH ORPHANED ARMIES')
+        if src not in self.board:
             return
-        if src in self.board:
-            self.board[src].move(dst)
+        self.board[src].move(dst)
 
     def action_reset(self, _id, num_boards=1):
         self.init_board(int(num_boards))
         self.player = None
-        self.started = False
-        self.who_is_who = {}
         self.potential_pieces = []
         self.selected = None
         self.is_dragging = False
-
-    def action_forcestart(self, _id):
-        self.started = True
         self.last_start = self.counter
 
     def action_replay(self, i):
-        if self.last_start is None:
-            self.messages.append('NO GAME WAS PLAYED')
-            return
         self.iter_actions[self.counter][i] = [('endreplay', ())]
         self.replay_counter = self.last_start
         self.action_reset(i, self.num_boards)
@@ -336,7 +323,6 @@ class Game:
     def action_become(self, i, player):
         if i == self.id:
             self.player = player
-        self.who_is_who[i] = player
         if player is None:
             player_str = 'spectator'
         else:
@@ -352,18 +338,7 @@ class Game:
         '''.split('\n'))
 
     def action_help(self, _id):
-        self.messages.append('commands: <host> | /help | /reset [num-boards] | /nick <nickname> | /replay | /credits')
-        self.help_keys()
-        self.help_address()
-
-    def help_keys(self):
-        self.messages.append('keys: F1=toggle-fullscreen | F2=choose-set | F3 = reset | F4 = 4-players')
-
-    def help_address(self):
-        if self.socket is None:
-            return
-        self.messages.append('Your address is:')
-        self.messages.append(self.address.upper())
+        self.messages.append('commands: /help | /reset | /nick <nickname> | /replay | /credits')
 
     def show_board(self):
         display.fill((0, 0, 0))
@@ -384,10 +359,11 @@ class Game:
             move_time = (self.counter - piece.last_move_time)*0.1
             if move_time < 1:
                 pos_between = move_time
-                last_screen_pos = self.screen_pos(piece.last_pos)
-                new_screen_pos = self.screen_pos(pos)
-                display.blit(piece.image(True),
-                             [int(last_screen_pos[i]+(new_screen_pos[i]-last_screen_pos[i])*pos_between) for i in range(2)])
+                if piece.last_pos is not None:
+                    last_screen_pos = self.screen_pos(piece.last_pos)
+                    new_screen_pos = self.screen_pos(pos)
+                    display.blit(piece.image(True),
+                                [int(last_screen_pos[i]+(new_screen_pos[i]-last_screen_pos[i])*pos_between) for i in range(2)])
             if piece is self.selected:
                 transparent = True
             display.blit(piece.image(transparent), self.screen_pos(pos))
@@ -525,8 +501,7 @@ class Game:
         self.update_dst()
         self.show_board()
 
-
 game = Game()
-while True:
+while not game.done:
     game.iteration()
     clock.tick(30)

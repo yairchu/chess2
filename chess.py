@@ -7,7 +7,7 @@ class Piece:
     freeze_time = 80
     last_move_time = 0
 
-    last_pos = (3.5, 3.5) # Initially animate from center of board
+    last_pos = None
 
     def __init__(self, player, pos, game):
         self.player = player
