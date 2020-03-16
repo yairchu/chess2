@@ -48,10 +48,17 @@ class Piece:
         self.game.player_freeze[self.player] = self.game.counter+self.game.player_freeze_time
         return True
 
-    def moves(self, with_freeze=True):
-        if with_freeze and self.game.counter < max(
+    def moves(self):
+        if self.game.counter < max(
                 self.freeze_until, self.game.player_freeze.get(self.player, 0)):
             return
+        yield from self.base_moves()
+
+    def sight(self):
+        'What squares can this piece see (overridden for Pawn)'
+        yield from self.base_moves()
+
+    def base_moves(self):
         for streak in self._moves(*self.pos):
             for dst in streak:
                 if dst in self.board and self.board[dst].side() == self.side():
@@ -62,10 +69,6 @@ class Piece:
                     break
                 if dst in self.board:
                     break
-
-    def sight(self):
-        'What squares can this piece see (overridden for Pawn)'
-        return self.moves(with_freeze=False)
 
 class Rook(Piece):
     sight_color = (0.5, 0.5, 1)
@@ -104,14 +107,13 @@ class King(Piece):
     sight_color = (0, 1, 1)
     freeze_time = 60
     def sight(self):
-        for pos in self.moves(False):
-            yield pos
+        yield from self.base_moves()
         for streak in itertools.chain(Knight._moves(*self.pos), Queen._moves(*self.pos)):
             for pos in streak:
                 if not self.game.in_bounds(pos):
                     break
                 if pos in self.board:
-                    if self.pos in self.board[pos].moves(False):
+                    if self.pos in self.board[pos].base_moves():
                         yield pos
                     break
     def _moves(self, x, y):
@@ -137,8 +139,7 @@ class Pawn(Piece):
             new_piece.freeze_until = self.game.counter+self.egg_time
         return True
     def sight(self):
-        for pos in super(Pawn, self).sight():
-            yield pos
+        yield from self.base_moves()
         delta = -1 if self.side() else 1
         x, y = self.pos
         for a in [x-1, x+1]:
