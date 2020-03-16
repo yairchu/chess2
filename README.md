@@ -20,18 +20,9 @@ Download the app from the [releases page](https://github.com/yairchu/chess2/rele
 
 Chess 2 is played vs friends over the network.
 
-To connect, both players need to start the program,
-which then looks like this:
-
-![Initial screen](doc/images/step-0.png)
-
-Have one player type the address of the other. Than the text at the top should say "connection successful" and show the keys.
-
-Specifically the F2 key picks a side. Have both players pick opposite sides and start playing.
-
-Alternatively for a 4 player mode, press F4 and connect more players.
-
-![Game on](doc/images/step-1.png)
+* To connect, both players need to start the program
+* At the top of each player an address such as "BASK DAWN ALAN" will appear
+* Any player needs to type the address of the other player to connect
 
 ## Developing/building
 
