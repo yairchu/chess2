@@ -2,9 +2,40 @@
 
 Chess 2 is a multi-player real time strategy game based on the classic game of Chess.
 
-# Develop/build
+## Installing
 
-## macOS
+### macOS
+
+Download the app from the [releases page](https://github.com/yairchu/chess2/releases)
+
+### Other platforms
+
+* Install Python (version 3)
+* In your terminal:
+* `pip install pygame`
+* `pip install pystun3`
+* `python main.py`
+
+## Playing
+
+Chess 2 is played vs friends over the network.
+
+To connect, both players need to start the program,
+which then looks like this:
+
+![Initial screen](doc/images/step-0.png)
+
+Have one player type the address of the other. Than the text at the top should say "connection successful" and show the keys.
+
+Specifically the F2 key picks a side. Have both players pick opposite sides and start playing.
+
+Alternatively for a 4 player mode, press F4 and connect more players.
+
+![Game on](doc/images/step-1.png)
+
+## Developing/building
+
+### macOS
 
     python setup.py py2app
     # Remove unneeded resources to save some space
