@@ -9,6 +9,7 @@ import random
 import select
 import socket
 import sys
+import time
 import threading
 import urllib.request
 
@@ -69,7 +70,6 @@ class Game:
         self.iter_actions = {}
         self.peers = []
         self.mouse_pos = None
-        self.connecting = False
         self.action_reset(self.id)
         self.last_start = None
         self.last_selected_at_dst = {}
@@ -84,6 +84,8 @@ class Game:
 
     def net_thread_go(self):
         self.setup_socket()
+        self.setup_addr_name()
+        self.wait_for_connections()
 
     def setup_socket(self):
         while True:
@@ -93,7 +95,8 @@ class Game:
                 if gameport is None:
                     print('retrying stun connection')
                     continue
-                print('external host %s:%d' % (gamehost, gameport))
+                self.my_addr = (gamehost, gameport)
+                print('external host %s:%d' % self.my_addr)
                 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 sock.bind(('', local_port))
                 print('listening on port %d' % local_port)
@@ -102,13 +105,33 @@ class Game:
                 continue
             break
         self.socket = sock
-        url = 'http://game-match.herokuapp.com/register/chess2/%s/%d/' % (gamehost, gameport)
+
+    def setup_addr_name(self):
+        url = 'http://game-match.herokuapp.com/register/chess2/%s/%d/' % self.my_addr
         print('registering at %s' % url)
-        self.address = urllib.request.urlopen(url).read()
+        self.address = urllib.request.urlopen(url).read().decode('utf-8')
         self.messages.append('')
         self.help_address()
         self.messages.append('')
         self.messages.append('Type the address of a friend to play with them')
+
+    def wait_for_connections(self):
+        while not self.peers:
+            time.sleep(5)
+            url = 'http://game-match.herokuapp.com/lookup/chess2/%s/' % self.address.replace(' ', '%20')
+            print('checking game at %s' % url)
+            self.add_peers(urllib.request.urlopen(url).read().decode('utf-8'))
+
+    def add_peers(self, peers_str):
+        for x in peers_str.split():
+            host, port_str = x.split(':')
+            port = int(port_str)
+            if (host, port) == self.my_addr:
+                continue
+            if (host, port) in self.peers:
+                continue
+            print('established connection with %s:%d' % (host, port))
+            self.peers.append((host, port))
 
     def init_board(self, num_boards=1):
         '''
@@ -170,6 +193,8 @@ class Game:
 
     @event_handlers.append
     def K_RETURN(self):
+        if not self.entry:
+            return
         command = self.entry
         self.entry = ''
         if command[:1] == '/':
@@ -183,19 +208,9 @@ class Game:
         self.connect_thread.start()
 
     def connect_thread_go(self, addr):
-        url = 'http://game-match.herokuapp.com/lookup/chess2/%s/' % (addr.replace(' ', '%20'))
+        url = 'http://game-match.herokuapp.com/connect/chess2/%s/%s/' % (self.address.replace(' ', '%20'), addr.replace(' ', '%20'))
         print('looking up host at %s' % url)
-        response = urllib.request.urlopen(url).read().decode('utf-8')
-        host, port_str = response.split(':')
-        port = int(port_str)
-        print('connecting to %s:%d' % (host, port))
-        if self.socket is None:
-            print('no socket yet!')
-            return
-        self.socket.sendto(marshal.dumps((self.id, 'HELLO')), 0, (host, port))
-        self.connecting = True
-        if self.socket is None:
-            return
+        self.add_peers(urllib.request.urlopen(url).read().decode('utf-8'))
 
     @event_handlers.append
     def K_ESCAPE(self):
@@ -291,17 +306,6 @@ class Game:
             return
         if src in self.board:
             self.board[src].move(dst)
-
-    @quiet_action
-    def action_welcome(self, i, peer, peer_id):
-        self.action_reset(i)
-        if peer_id == self.id or peer in self.peers:
-            return
-        self.peers.append(peer)
-        self.messages.append('connecting to %s' % (peer, ))
-        self.help_keys()
-        if self.id in self.nicknames:
-            self.add_action('nick', self.nick(self.id))
 
     def action_reset(self, _id, num_boards=1):
         self.init_board(int(num_boards))
@@ -468,29 +472,17 @@ class Game:
         packet = marshal.dumps((self.id,
                                 [(i, self.iter_actions.setdefault(i, {}).setdefault(self.id, []))
                                  for i in range(max(0, self.counter-latency), self.counter+latency)]))
-        was_connecting = self.connecting
         for peer in self.peers:
             self.socket.sendto(packet, 0, peer)
         while poll(self.socket):
             packet, peer = self.socket.recvfrom(0x1000)
             peer_id, peer_iter_actions = marshal.loads(packet)
-            if peer_iter_actions == 'HELLO':
-                self.add_action('welcome', peer, peer_id)
-                continue
             for i, actions in peer_iter_actions:
                 self.iter_actions.setdefault(i, {})[peer_id] = actions
-                if self.connecting:
-                    for action_type, _params in actions:
-                        if action_type == 'welcome':
-                            self.connecting = False
-                            self.counter = i
-                            self.peers.append(peer)
-                            self.messages.append('connection successful')
-                            self.help_keys()
-        if was_connecting and not self.connecting:
-            self.iter_actions = {}
 
     def act(self):
+        if not self.peers:
+            return
         if self.counter < latency:
             self.counter += 1
             return
