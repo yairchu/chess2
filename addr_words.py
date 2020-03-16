@@ -26,7 +26,7 @@ def words_to_address(words):
     if len(parts) != 6:
         return None
     try:
-        nums = [byte_words.index(x) for x in parts]
+        nums = [byte_words.index(x.lower()) for x in parts]
     except ValueError:
         return None
     return '.'.join(str(x) for x in nums[:4]), nums[4] + 256*nums[5]

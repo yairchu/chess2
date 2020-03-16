@@ -329,7 +329,7 @@ class Game:
 
     def help_address(self):
         self.messages.append('Your address is:')
-        self.messages.append(addr_words.address_to_words(self.gamehost, self.gameport))
+        self.messages.append(addr_words.address_to_words(self.gamehost, self.gameport).upper())
 
     def show_board(self):
         display.fill((0, 0, 0))
