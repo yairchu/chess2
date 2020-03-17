@@ -380,7 +380,6 @@ class Game:
             '> '+self.entry,
             board_bottom + (resolution[1]-board_bottom-fontsize) // 2)
         for y, msg in enumerate(self.messages[-num_msg_lines:]):
-            sz = font.size(msg)
             centered_text(msg, fontsize*y)
 
         pygame.display.flip()
