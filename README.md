@@ -36,3 +36,10 @@ Chess 2 is played vs friends over the network.
     rm -r dist/Chess\ 2.app/Contents/Resources/lib/python3.8/pygame/{docs,examples,tests}
 
 (this worked for me on macOS 10.14.6 with Python 3.8.2 and pygame 2.0.0.dev6)
+
+### Windows
+
+    pip install pyinstaller
+    pyinstaller -F main.y
+    copy chess.png dist
+

@@ -39,7 +39,7 @@ def toggle_fullscreen():
 
 clock = pygame.time.Clock()
 fontsize = 20
-font = pygame.font.SysFont(pygame.font.get_default_font(), fontsize)
+font = pygame.font.SysFont('Sans', fontsize-3)
 
 num_msg_lines = 6
 
@@ -146,6 +146,7 @@ class Game:
                 continue
             print('established connection with %s:%d' % (host, port))
             self.peers.append((host, port))
+            self.messages.clear()
             self.messages.append('')
             self.messages.append('Connection successful!')
             self.messages.append('THE GAME BEGINS!')
