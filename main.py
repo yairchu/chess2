@@ -9,6 +9,7 @@ import os
 import random
 import select
 import socket
+import sys
 import time
 import threading
 import urllib.request
@@ -60,7 +61,7 @@ def centered_text(text, pos_top_y):
 class Game:
     player_freeze_time = 20
 
-    def __init__(self):
+    def __init__(self, dev_mode=False):
         self.done = False
         self.id = random.randrange(2**64)
         self.nicknames = {}
@@ -80,12 +81,14 @@ class Game:
         self.player_freeze = {}
         self.messages.append('')
         self.messages.append('Welcome to Chess 2!')
-        self.messages.append('Establishing server connection...')
+        self.messages.append('Developer Mode' if dev_mode else 'Establishing server connection...')
+        self.dev_mode = dev_mode
         self.socket = None
         self.threads = []
         net_thread = threading.Thread(target=self.net_thread_go)
         self.threads.append(net_thread)
-        net_thread.start()
+        if not dev_mode:
+            net_thread.start()
 
     def net_thread_go(self):
         self.setup_socket()
@@ -271,7 +274,9 @@ class Game:
     def MOUSEBUTTONUP(self, event):
         self.calc_mouse_pos(event)
         self.is_dragging = False
-        if event.button != 1 or self.selected is None or self.dst_pos is None or not self.peers:
+        if event.button != 1 or self.selected is None or self.dst_pos is None:
+            return
+        if not self.peers and not self.dev_mode:
             return
         self.add_action('move', self.selected.pos, self.dst_pos)
         self.selected = None
@@ -457,7 +462,7 @@ class Game:
                 self.iter_actions.setdefault(i, {})[peer_id] = actions
 
     def act(self):
-        if not self.peers:
+        if not self.peers and not self.dev_mode:
             return
         if self.counter < latency:
             self.counter += 1
@@ -501,7 +506,7 @@ class Game:
         self.update_dst()
         self.show_board()
 
-game = Game()
+game = Game('--dev' in sys.argv)
 while not game.done:
     game.iteration()
     clock.tick(30)
