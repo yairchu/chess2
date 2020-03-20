@@ -63,7 +63,7 @@ class Game:
 
     def __init__(self, dev_mode=False):
         self.done = False
-        self.id = random.randrange(2**64)
+        self.instance_id = random.randrange(2**64)
         self.nicknames = {}
         self.address = None
         self.entry = ''
@@ -74,7 +74,7 @@ class Game:
         self.iter_actions = {}
         self.peers = []
         self.mouse_pos = None
-        self.action_reset(self.id)
+        self.action_reset(self.instance_id)
         self.last_selected_at_dst = {}
         self.is_replay = False
         self.player = 0
@@ -328,7 +328,7 @@ class Game:
     @quiet_action
     def action_become(self, i, player):
         player = int(player)
-        if i == self.id:
+        if i == self.instance_id:
             self.player = player
         if player is None:
             player_str = 'spectator'
@@ -451,9 +451,10 @@ class Game:
     def communicate(self):
         if self.socket is None:
             return
-        packet = marshal.dumps((self.id,
-                                [(i, self.iter_actions.setdefault(i, {}).setdefault(self.id, []))
-                                 for i in range(max(0, self.counter-latency), self.counter+latency)]))
+        packet = marshal.dumps((
+            self.instance_id,
+            [(i, self.iter_actions.setdefault(i, {}).setdefault(self.instance_id, []))
+                for i in range(max(0, self.counter-latency), self.counter+latency)]))
         for peer in self.peers:
             self.socket.sendto(packet, 0, peer)
         while poll(self.socket):
@@ -493,8 +494,8 @@ class Game:
     def iteration(self):
         self.communicate()
 
-        if self.id not in self.iter_actions.setdefault(self.counter+latency, {}):
-            self.iter_actions[self.counter+latency][self.id] = self.cur_actions
+        if self.instance_id not in self.iter_actions.setdefault(self.counter+latency, {}):
+            self.iter_actions[self.counter+latency][self.instance_id] = self.cur_actions
             self.cur_actions = []
 
         self.act()
