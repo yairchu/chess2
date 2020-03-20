@@ -327,6 +327,7 @@ class Game:
 
     @quiet_action
     def action_become(self, i, player):
+        player = int(player)
         if i == self.id:
             self.player = player
         if player is None:
