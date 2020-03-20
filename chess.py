@@ -1,7 +1,7 @@
 import itertools
 from itertools import count
 
-import pygame
+from kivy.uix.image import Image
 
 class Piece:
     freeze_time = 80
@@ -17,9 +17,9 @@ class Piece:
         self.board = game.board
         game.board[pos] = self
 
-    def image(self, transparent=False):
-        'Get image for piece. transparent flags for semi-transparent versions'
-        return self._images[self.game.chess_sets_perm[self.player]][transparent]
+    def image(self):
+        'Get image for piece'
+        return self._images[self.game.chess_sets_perm[self.player]]
 
     def side(self):
         return self.player % 2
@@ -163,17 +163,10 @@ first_row = [Rook, Knight, Bishop, King, Queen, Bishop, Knight, Rook]
 
 S = 45
 
-pieces_image = pygame.image.load('chess.png')
-
-transparent_pieces_image = pieces_image.copy()
-for x in range(S*6):
-    for y in range(S*6):
-        r, g, b, a = transparent_pieces_image.get_at((x, y))
-        transparent_pieces_image.set_at((x, y), (r, g, b, a//2))
+pieces_image = Image(source='chess.png').texture
 
 for x, piece in enumerate([King, Queen, Rook, Bishop, Knight, Pawn]):
-    piece._images = [[image.subsurface([S*x, S*y, S, S])
-                        for image in [pieces_image, transparent_pieces_image]] for y in range(6)]
+    piece._images = [pieces_image.get_region(S*x, S*y, S, S) for y in range(6)][::-1]
 
 for preference, piece in enumerate([King, Pawn, Knight, Bishop, Rook, Queen]):
     piece.move_preference = preference

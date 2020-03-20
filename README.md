@@ -12,7 +12,7 @@ Download the app from the [releases page](https://github.com/yairchu/chess2/rele
 
 * Install Python (version 3.3 or above)
 * In your terminal:
-* `pip install pygame`
+* `pip install kivy --pre --extra-index-url https://kivy.org/downloads/simple/`
 * `pip install pystun3`
 * To run the game type `python main.py` from the game's folder
 
@@ -44,9 +44,8 @@ Chess 2 is played vs friends over the network.
     # Remove unneeded resources to save some space
     rm dist/Chess\ 2.app/Contents/Frameworks/lib*.dylib
     rm -rf dist/Chess\ 2.app/Contents/Resources/lib/{tcl,tk}*
-    rm -r dist/Chess\ 2.app/Contents/Resources/lib/python3.8/pygame/{docs,examples,tests}
 
-(this worked for me on macOS 10.14.6 with Python 3.8.2 and pygame 2.0.0.dev6)
+(this worked for me on macOS 10.14.6 with Python 3.8.2 and kivy v2.0.0rc1)
 
 ### Building a Windows exe
 

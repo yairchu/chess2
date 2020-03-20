@@ -1,7 +1,7 @@
 from setuptools import setup
 
 OPTIONS = {
-    'packages': ['pygame', 'stun'],
+    'packages': ['kivy', 'stun'],
 }
 
 setup(
