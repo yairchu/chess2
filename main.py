@@ -42,6 +42,7 @@ class Game(BoxLayout):
     def __init__(self, dev_mode=False, **kwargs):
         super(Game, self).__init__(**kwargs)
         self.game_model = GameModel()
+        self.game_model.king_captured = self.king_captured
         self.done = False
         self.instance_id = random.randrange(2**64)
         self.nicknames = {}
@@ -55,6 +56,7 @@ class Game(BoxLayout):
         self.dev_mode = dev_mode
         self.socket = None
         self.threads = []
+        self.score = [0, 0]
         net_thread = threading.Thread(target=self.net_thread_go)
         self.threads.append(net_thread)
         if not dev_mode:
@@ -66,6 +68,13 @@ class Game(BoxLayout):
         self.info_pane = BoxLayout(orientation='vertical')
         self.add_widget(self.info_pane)
 
+        row = 60
+        self.score_label = Label(
+            halign='center',
+            size_hint=(1, 0),
+            size_hint_min_y=row)
+        self.info_pane.add_widget(self.score_label)
+
         self.label = Label(halign='center', valign='bottom')
         def update_label_text_size(*args):
             self.label.text_size = (self.label.width, None)
@@ -76,7 +85,7 @@ class Game(BoxLayout):
             multiline=False,
             text_validate_unfocus=is_mobile,
             size_hint=(1, 0),
-            size_hint_min_y=60)
+            size_hint_min_y=row)
         self.text_input.bind(on_text_validate=self.handle_text_input)
         if not is_mobile:
             def steal_focus(*args):
@@ -96,6 +105,7 @@ class Game(BoxLayout):
         Clock.schedule_interval(self.on_clock, 1/30)
 
     def update_label(self):
+        self.score_label.text = 'White: %d   Black: %d' % tuple(self.score)
         self.label.text = '\n'.join(self.messages[-num_msg_lines:])
 
     def resized(self, _widget, size):
@@ -181,7 +191,7 @@ class Game(BoxLayout):
         if command[:1] == '/':
             self.game_model.add_action(*command[1:].split())
             return
-        if self.peers:
+        if self.peers or self.dev_mode:
             # Chat
             self.game_model.add_action('msg', command)
             return
@@ -230,16 +240,20 @@ class Game(BoxLayout):
     def action_endreplay(self, _id):
         self.is_replay = False
 
+    def player_str(self, player):
+        if player is None:
+            return 'spectator'
+        r = ['White', 'Black'][player%2]
+        if self.game_model.num_boards > 1:
+            r += '#'+str(player//2)
+        return r
+
     @quiet_action
     def action_become(self, i, player):
         player = int(player)
         if i == self.instance_id:
             self.game_model.player = player
-        if player is None:
-            player_str = 'spectator'
-        else:
-            player_str = ['White', 'Black'][player%2]+'#'+str(player//2)
-        self.messages.append(self.nick(i) + ' becomes ' + player_str)
+        self.messages.append(self.nick(i) + ' becomes ' + self.player_str(player))
 
     def action_credits(self, _id):
         self.messages.extend('''Credits:
@@ -266,6 +280,16 @@ class Game(BoxLayout):
             peer_id, peer_iter_actions = marshal.loads(packet)
             for i, actions in peer_iter_actions:
                 self.iter_actions.setdefault(i, {})[peer_id] = actions
+
+    def king_captured(self, who):
+        winner = 1 - who%2
+        self.score[winner] += 1
+        self.game_model.init(self.game_model.num_boards)
+        self.board_view.reset()
+        self.messages.append('')
+        self.messages.append('%s King Captured!' % self.player_str(who))
+        self.messages.append('%s wins!' % self.player_str(winner))
+        self.update_label()
 
     def act(self):
         if not self.peers and not self.dev_mode:

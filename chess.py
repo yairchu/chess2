@@ -123,11 +123,6 @@ class King(Piece):
                 if (a, b) != (x, y):
                     yield [(a, b)]
 
-    def on_die(self):
-        for piece in list(self.board.values()):
-            if piece is not self and piece.player == self.player:
-                piece.die()
-
 class Pawn(Piece):
     sight_color = (0.5, 0.5, 0.5)
     egg_time = 60

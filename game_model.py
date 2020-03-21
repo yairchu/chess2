@@ -24,6 +24,8 @@ class GameModel:
         for who, (x, y0, y1) in enumerate([(0, 0, 1), (0, 7, 6), (8, 0, 1), (8, 7, 6)][:self.num_players]):
             for dx, piece in enumerate(chess.first_row):
                 piece(who, (x+dx, y0), self)
+                if piece == chess.King:
+                    piece.on_die = lambda x: self.king_captured(who)
                 chess.Pawn(who, (x+dx, y1), self)
 
     def in_bounds(self, pos):
