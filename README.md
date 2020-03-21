@@ -52,6 +52,7 @@ Chess 2 is played vs friends over the network.
     pip install pyinstaller
     pyinstaller -F main.y
     copy chess.png dist
+    copy C:\Users\IEUser\AppData\Local\Programs\Python\Python<VER>\share\sdl2\bin\libpng<VER>.dll dist
 
 ### Build the iOS app
 
