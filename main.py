@@ -419,10 +419,11 @@ class BoardView(Widget):
 
     def board_info(self):
         flash = {}
-        flashy = self.game.board.get(self.mouse_pos)
-        if flashy is not None and flashy.player == self.game.player:
-            for pos in flashy.moves():
-                flash[pos] = flashy.sight_color
+        if not is_mobile and not self.is_dragging:
+            flashy = self.game.board.get(self.mouse_pos)
+            if flashy is not None and flashy.player == self.game.player:
+                for pos in flashy.moves():
+                    flash[pos] = flashy.sight_color
 
         movesee = {}
         see = set()
@@ -432,7 +433,7 @@ class BoardView(Widget):
             see.add(piece.pos)
             if piece.player == self.game.player:
                 moves = set(piece.moves())
-                if self.mouse_pos in moves:
+                if self.mouse_pos in moves and not self.is_dragging and piece == self.selected:
                     flash[piece.pos] = piece.sight_color
                 else:
                     movesee[piece.pos] = piece.sight_color
