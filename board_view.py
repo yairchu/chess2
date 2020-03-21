@@ -152,13 +152,15 @@ class BoardView(Widget):
         self.selected = None
 
     def calc_mouse_pos(self, pos):
-        x, y = pos
-        self.mouse_pos = (
-            int((x-self.pos[0])//self.square_size),
-            int((y-self.pos[1])//self.square_size))
+        board_pos = [int((x - sx) // self.square_size) for x, sx in zip(pos, self.pos)]
+        if self.game.player%2 == 1:
+            board_pos = [s-1-x for x, s in zip(board_pos, self.game.board_size)]
+        self.mouse_pos = tuple(board_pos)
 
     def screen_pos(self, pos):
-        return self.pos[0]+self.square_size*pos[0], self.pos[1]+self.square_size*pos[1]
+        if self.game.player%2 == 1:
+            pos = [s-1-x for x, s in zip(pos, self.game.board_size)]
+        return tuple(sx+self.square_size*x for x, sx in zip(pos, self.pos))
 
     last_pos = None
     def update_dst(self):

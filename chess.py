@@ -155,7 +155,7 @@ class Pawn(Piece):
             if (a, y+delta) in self.board:
                 yield [(a, y+delta)]
 
-first_row = [Rook, Knight, Bishop, King, Queen, Bishop, Knight, Rook]
+first_row = [Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook]
 
 S = 45
 
