@@ -37,10 +37,6 @@ def quiet_action(func):
     func.quiet = True
     return func
 
-def centered_text(text, pos_top_y):
-    t = font.render(text, 255, (255, 255, 255))
-    display.blit(t, ((resolution[0] - t.get_width())//2, pos_top_y))
-
 class Game(BoxLayout):
     player_freeze_time = 20
 
