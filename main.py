@@ -347,84 +347,6 @@ class Game:
     def action_help(self, _id):
         self.messages.append('commands: /help | /reset | /nick <nickname> | /replay | /credits')
 
-    def show_board(self):
-        display.fill((0, 0, 0))
-
-        cols, see = self.board_info()
-
-        for (x, y), col in cols.items():
-            sx, sy = self.screen_pos((x, y))
-            if (x, y) in self.board and self.board[x, y].freeze_until > self.counter:
-                display.subsurface([sx+3, sy+3, S-7, S-7]).fill(col)
-            else:
-                display.subsurface([sx, sy, S-1, S-1]).fill(col)
-
-        for pos, piece in self.board.items():
-            if pos not in see:
-                continue
-            transparent = False
-            move_time = (self.counter - piece.last_move_time)*0.1
-            if move_time < 1:
-                pos_between = move_time
-                if piece.last_pos is not None:
-                    last_screen_pos = self.screen_pos(piece.last_pos)
-                    new_screen_pos = self.screen_pos(pos)
-                    display.blit(piece.image(True),
-                                [int(last_screen_pos[i]+(new_screen_pos[i]-last_screen_pos[i])*pos_between) for i in range(2)])
-            if piece is self.selected:
-                transparent = True
-            display.blit(piece.image(transparent), self.screen_pos(pos))
-
-        if self.selected is not None and self.dst_pos is not None:
-            display.blit(self.selected.image(transparent = True), self.screen_pos(self.dst_pos))
-
-        if self.is_dragging:
-            x, y = pygame.mouse.get_pos()
-            display.blit(self.selected.image(transparent = True), (x-S//2, y-S//2))
-
-        (_, board_bottom) = self.screen_pos((0,8))
-        centered_text(
-            '> '+self.entry,
-            board_bottom + (resolution[1]-board_bottom-fontsize) // 2)
-        for y, msg in enumerate(self.messages[-num_msg_lines:]):
-            centered_text(msg, fontsize*y)
-
-        pygame.display.flip()
-
-    def board_info(self):
-        flash = {}
-        flashy = self.board.get(self.mouse_pos)
-        if flashy is not None and flashy.player == self.player:
-            for pos in flashy.moves():
-                flash[pos] = flashy.sight_color
-
-        movesee = {}
-        see = set()
-        for piece in self.board.values():
-            if self.player is not None and piece.side() != self.player%2:
-                continue
-            see.add(piece.pos)
-            if piece.player == self.player:
-                moves = set(piece.moves())
-                if self.mouse_pos in moves:
-                    flash[piece.pos] = piece.sight_color
-                else:
-                    movesee[piece.pos] = piece.sight_color
-            for dst in itertools.chain(piece.sight()):
-                see.add(dst)
-                if piece.player == self.player and dst in moves:
-                    movesee[dst] = list(map(operator.add, movesee.get(dst, [0]*3), piece.sight_color))
-
-        cols = {}
-        for pos in see:
-            cols[pos] = (240, 240, 240)
-        for pos, col in movesee.items():
-            cols[pos] = [128+a*127./max(col) for a in col]
-        for pos, col in flash.items():
-            cols[pos] = [255*x for x in col]
-
-        return cols, see
-
     last_pos = None
     def update_dst(self):
         if self.selected is not None and self.board.get(self.selected.pos) is not self.selected:
@@ -507,6 +429,84 @@ class Game:
 
         self.update_dst()
         self.show_board()
+
+    def show_board(self):
+        display.fill((0, 0, 0))
+
+        cols, see = self.board_info()
+
+        for (x, y), col in cols.items():
+            sx, sy = self.screen_pos((x, y))
+            if (x, y) in self.board and self.board[x, y].freeze_until > self.counter:
+                display.subsurface([sx+3, sy+3, S-7, S-7]).fill(col)
+            else:
+                display.subsurface([sx, sy, S-1, S-1]).fill(col)
+
+        for pos, piece in self.board.items():
+            if pos not in see:
+                continue
+            transparent = False
+            move_time = (self.counter - piece.last_move_time)*0.1
+            if move_time < 1:
+                pos_between = move_time
+                if piece.last_pos is not None:
+                    last_screen_pos = self.screen_pos(piece.last_pos)
+                    new_screen_pos = self.screen_pos(pos)
+                    display.blit(piece.image(True),
+                                [int(last_screen_pos[i]+(new_screen_pos[i]-last_screen_pos[i])*pos_between) for i in range(2)])
+            if piece is self.selected:
+                transparent = True
+            display.blit(piece.image(transparent), self.screen_pos(pos))
+
+        if self.selected is not None and self.dst_pos is not None:
+            display.blit(self.selected.image(transparent = True), self.screen_pos(self.dst_pos))
+
+        if self.is_dragging:
+            x, y = pygame.mouse.get_pos()
+            display.blit(self.selected.image(transparent = True), (x-S//2, y-S//2))
+
+        (_, board_bottom) = self.screen_pos((0,8))
+        centered_text(
+            '> '+self.entry,
+            board_bottom + (resolution[1]-board_bottom-fontsize) // 2)
+        for y, msg in enumerate(self.messages[-num_msg_lines:]):
+            centered_text(msg, fontsize*y)
+
+        pygame.display.flip()
+
+    def board_info(self):
+        flash = {}
+        flashy = self.board.get(self.mouse_pos)
+        if flashy is not None and flashy.player == self.player:
+            for pos in flashy.moves():
+                flash[pos] = flashy.sight_color
+
+        movesee = {}
+        see = set()
+        for piece in self.board.values():
+            if self.player is not None and piece.side() != self.player%2:
+                continue
+            see.add(piece.pos)
+            if piece.player == self.player:
+                moves = set(piece.moves())
+                if self.mouse_pos in moves:
+                    flash[piece.pos] = piece.sight_color
+                else:
+                    movesee[piece.pos] = piece.sight_color
+            for dst in itertools.chain(piece.sight()):
+                see.add(dst)
+                if piece.player == self.player and dst in moves:
+                    movesee[dst] = list(map(operator.add, movesee.get(dst, [0]*3), piece.sight_color))
+
+        cols = {}
+        for pos in see:
+            cols[pos] = (240, 240, 240)
+        for pos, col in movesee.items():
+            cols[pos] = [128+a*127./max(col) for a in col]
+        for pos, col in flash.items():
+            cols[pos] = [255*x for x in col]
+
+        return cols, see
 
 game = Game('--dev' in sys.argv)
 while not game.done:
