@@ -226,9 +226,6 @@ class Game(BoxLayout):
         self.add_peers(urllib.request.urlopen(url).read().decode('utf-8'))
         self.player = 1
 
-    def K_F3(self):
-        self.add_action('reset', 1)
-
     @quiet_action
     def action_nick(self, i, *words):
         name = '-'.join(words)
