@@ -40,7 +40,7 @@ def quiet_action(func):
 class Game(BoxLayout):
     player_freeze_time = 20
 
-    def __init__(self, dev_mode=True, **kwargs):
+    def __init__(self, dev_mode=False, **kwargs):
         super(Game, self).__init__(**kwargs)
         self.done = False
         self.instance_id = random.randrange(2**64)
@@ -321,10 +321,13 @@ class Game(BoxLayout):
                 else:
                     if not hasattr(action_func, 'quiet'):
                         self.messages.append(self.nick(i) + ' did ' + action_type.upper())
-                    try:
+                    if self.dev_mode:
                         action_func(i, *params)
-                    except:
-                        self.messages.append('action ' + action_type + ' failed')
+                    else:
+                        try:
+                            action_func(i, *params)
+                        except:
+                            self.messages.append('action ' + action_type + ' failed')
         self.update_label()
         self.counter += 1
 

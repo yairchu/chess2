@@ -37,6 +37,7 @@ class Piece:
         if self.board[self.pos] is not self or pos not in self.moves():
             # Situation changed since move queued, can't perform this move!
             return False
+        assert isinstance(pos[0], int)
         del self.board[self.pos]
         self.last_pos = self.pos
         self.last_move_time = self.game.counter

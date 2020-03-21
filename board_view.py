@@ -149,7 +149,9 @@ class BoardView(Widget):
 
     def calc_mouse_pos(self, pos):
         x, y = pos
-        self.mouse_pos = (x-self.pos[0])//self.square_size, (y-self.pos[1])//self.square_size
+        self.mouse_pos = (
+            int((x-self.pos[0])//self.square_size),
+            int((y-self.pos[1])//self.square_size))
 
     def screen_pos(self, pos):
         return self.pos[0]+self.square_size*pos[0], self.pos[1]+self.square_size*pos[1]
