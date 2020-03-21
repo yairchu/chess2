@@ -313,7 +313,7 @@ class Game(BoxLayout):
 
 class Chess2App(App):
     def build(self):
-        self.game = Game()
+        self.game = Game(os.environ.get('CHESS2_DEV'))
         self.game.text_input.focus = True
         return self.game
     def stop(self):
