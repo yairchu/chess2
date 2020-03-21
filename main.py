@@ -250,46 +250,6 @@ class Game:
     def K_F3(self):
         self.add_action('reset', 1)
 
-    @event_handlers.append
-    def MOUSEBUTTONDOWN(self, event):
-        self.calc_mouse_pos(event)
-        if event.button == 1:
-            if self.mouse_pos in self.board and self.board[self.mouse_pos].player == self.player:
-                self.is_dragging = True
-                self.selected = self.board[self.mouse_pos]
-            return
-        if [] == self.potential_pieces:
-            return
-        d = 1
-        if event.button == 4:
-            d = -1
-        self.selected = self.potential_pieces[
-            (self.potential_pieces.index(self.selected)+d)%len(self.potential_pieces)]
-
-    @event_handlers.append
-    def MOUSEMOTION(self, event):
-        self.calc_mouse_pos(event)
-
-    @event_handlers.append
-    def MOUSEBUTTONUP(self, event):
-        self.calc_mouse_pos(event)
-        self.is_dragging = False
-        if event.button != 1 or self.selected is None or self.dst_pos is None:
-            return
-        if not self.peers and not self.dev_mode:
-            return
-        self.add_action('move', self.selected.pos, self.dst_pos)
-        self.selected = None
-
-    event_handlers = dict((getattr(pygame, func.__name__), func) for func in event_handlers)
-
-    def calc_mouse_pos(self, event):
-        x, y = event.pos
-        self.mouse_pos = (x-self.board_pos[0])//S, (y-self.board_pos[1])//S
-
-    def screen_pos(self, pos):
-        return self.board_pos[0]+S*pos[0], self.board_pos[1]+S*pos[1]
-
     @quiet_action
     def action_nick(self, i, *words):
         name = '-'.join(words)
@@ -346,29 +306,6 @@ class Game:
 
     def action_help(self, _id):
         self.messages.append('commands: /help | /reset | /nick <nickname> | /replay | /credits')
-
-    last_pos = None
-    def update_dst(self):
-        if self.selected is not None and self.board.get(self.selected.pos) is not self.selected:
-            self.selected = None
-        if self.is_dragging and self.selected is not None:
-            self.dst_pos = None
-            if self.mouse_pos in self.selected.moves():
-                self.dst_pos = self.mouse_pos
-            return
-        self.is_dragging = False
-        self.potential_pieces = []
-        for piece in self.board.values():
-            if piece.player == self.player and self.mouse_pos in piece.moves():
-                self.potential_pieces.append(piece)
-        self.potential_pieces.sort(key = lambda x: x.move_preference)
-        if [] == self.potential_pieces:
-            self.selected = None
-        else:
-            self.dst_pos = self.mouse_pos
-            if self.last_pos != self.dst_pos or self.selected not in self.potential_pieces:
-                self.selected = self.potential_pieces[0]
-            self.last_pos = self.dst_pos
 
     def communicate(self):
         if self.socket is None:
@@ -507,6 +444,69 @@ class Game:
             cols[pos] = [255*x for x in col]
 
         return cols, see
+
+    @event_handlers.append
+    def MOUSEBUTTONDOWN(self, event):
+        self.calc_mouse_pos(event)
+        if event.button == 1:
+            if self.mouse_pos in self.board and self.board[self.mouse_pos].player == self.player:
+                self.is_dragging = True
+                self.selected = self.board[self.mouse_pos]
+            return
+        if [] == self.potential_pieces:
+            return
+        d = 1
+        if event.button == 4:
+            d = -1
+        self.selected = self.potential_pieces[
+            (self.potential_pieces.index(self.selected)+d)%len(self.potential_pieces)]
+
+    @event_handlers.append
+    def MOUSEMOTION(self, event):
+        self.calc_mouse_pos(event)
+
+    @event_handlers.append
+    def MOUSEBUTTONUP(self, event):
+        self.calc_mouse_pos(event)
+        self.is_dragging = False
+        if event.button != 1 or self.selected is None or self.dst_pos is None:
+            return
+        if not self.peers and not self.dev_mode:
+            return
+        self.add_action('move', self.selected.pos, self.dst_pos)
+        self.selected = None
+
+    event_handlers = dict((getattr(pygame, func.__name__), func) for func in event_handlers)
+
+    def calc_mouse_pos(self, event):
+        x, y = event.pos
+        self.mouse_pos = (x-self.board_pos[0])//S, (y-self.board_pos[1])//S
+
+    def screen_pos(self, pos):
+        return self.board_pos[0]+S*pos[0], self.board_pos[1]+S*pos[1]
+
+    last_pos = None
+    def update_dst(self):
+        if self.selected is not None and self.board.get(self.selected.pos) is not self.selected:
+            self.selected = None
+        if self.is_dragging and self.selected is not None:
+            self.dst_pos = None
+            if self.mouse_pos in self.selected.moves():
+                self.dst_pos = self.mouse_pos
+            return
+        self.is_dragging = False
+        self.potential_pieces = []
+        for piece in self.board.values():
+            if piece.player == self.player and self.mouse_pos in piece.moves():
+                self.potential_pieces.append(piece)
+        self.potential_pieces.sort(key = lambda x: x.move_preference)
+        if [] == self.potential_pieces:
+            self.selected = None
+        else:
+            self.dst_pos = self.mouse_pos
+            if self.last_pos != self.dst_pos or self.selected not in self.potential_pieces:
+                self.selected = self.potential_pieces[0]
+            self.last_pos = self.dst_pos
 
 game = Game('--dev' in sys.argv)
 while not game.done:
