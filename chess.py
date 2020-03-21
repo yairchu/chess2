@@ -17,9 +17,9 @@ class Piece:
         self.board = game.board
         game.board[pos] = self
 
-    def image(self):
+    def image(self, chess_sets_perm):
         'Get image for piece'
-        return self._images[self.game.board_view.chess_sets_perm[self.player]]
+        return self._images[chess_sets_perm[self.player]]
 
     def side(self):
         return self.player % 2

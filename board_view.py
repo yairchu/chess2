@@ -10,9 +10,10 @@ from kivy.utils import platform
 is_mobile = platform in ['ios', 'android']
 
 class BoardView(Widget):
-    def __init__(self, game, **kwargs):
+    def __init__(self, game, dev_mode=False, **kwargs):
         super(BoardView, self).__init__(**kwargs)
         self.game = game
+        self.dev_mode = dev_mode
         Window.bind(mouse_pos=self.mouse_motion)
         self.bind(size=self.resized)
         self.mouse_pos = None
@@ -59,18 +60,21 @@ class BoardView(Widget):
                         last_screen_pos = self.screen_pos(piece.last_pos)
                         new_screen_pos = self.screen_pos(pos)
                         Rectangle(
-                            texture=piece.image(),
+                            texture=piece.image(self.chess_sets_perm),
                             pos=[int(last_screen_pos[i]+(new_screen_pos[i]-last_screen_pos[i])*pos_between) for i in range(2)],
                             size=sq)
                 if piece is self.selected:
                     transparent = True
                 Color(1, 1, 1, .5 if transparent else 1)
-                Rectangle(texture=piece.image(), pos=self.screen_pos(pos), size=sq)
+                Rectangle(
+                    texture=piece.image(self.chess_sets_perm),
+                    pos=self.screen_pos(pos),
+                    size=sq)
 
             if self.selected is not None and self.dst_pos is not None:
                 Color(1, 1, 1, .5)
                 Rectangle(
-                    texture=self.selected.image(),
+                    texture=self.selected.image(self.chess_sets_perm),
                     pos=self.screen_pos(self.dst_pos),
                     size=sq)
 
@@ -78,7 +82,7 @@ class BoardView(Widget):
                 x, y = self.raw_mouse_pos
                 Color(1, 1, 1, .5)
                 Rectangle(
-                    texture=self.selected.image(),
+                    texture=self.selected.image(self.chess_sets_perm),
                     pos=(x-self.square_size//2, y-self.square_size//2),
                     size=sq)
 
@@ -142,7 +146,7 @@ class BoardView(Widget):
         self.is_dragging = False
         if self.selected is None or self.dst_pos is None:
             return
-        if not self.game.peers and not self.game.dev_mode:
+        if not self.game.started and not self.dev_mode:
             return
         self.game.add_action('move', self.selected.pos, self.dst_pos)
         self.selected = None

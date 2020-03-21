@@ -23,6 +23,7 @@ import stun
 
 import chess
 from board_view import BoardView
+from game_model import GameModel
 
 num_msg_lines = 6
 is_mobile = platform in ['ios', 'android']
@@ -38,23 +39,19 @@ def quiet_action(func):
     return func
 
 class Game(BoxLayout):
-    player_freeze_time = 20
-
     def __init__(self, dev_mode=False, **kwargs):
         super(Game, self).__init__(**kwargs)
+        self.game_model = GameModel()
         self.done = False
         self.instance_id = random.randrange(2**64)
         self.nicknames = {}
         self.address = None
         self.messages = []
-        self.counter = 0
         self.last_start = 0
-        self.cur_actions = []
         self.iter_actions = {}
         self.peers = []
         self.last_selected_at_dst = {}
         self.is_replay = False
-        self.player_freeze = {}
         self.dev_mode = dev_mode
         self.socket = None
         self.threads = []
@@ -63,7 +60,7 @@ class Game(BoxLayout):
         if not dev_mode:
             net_thread.start()
 
-        self.board_view = BoardView(self)
+        self.board_view = BoardView(self.game_model, dev_mode)
         self.add_widget(self.board_view)
 
         self.info_pane = BoxLayout(orientation='vertical')
@@ -89,7 +86,6 @@ class Game(BoxLayout):
         self.info_pane.add_widget(self.text_input)
 
         self.action_reset(self.instance_id)
-        self.player = 0
 
         self.messages.append('')
         self.messages.append('Welcome to Chess 2!')
@@ -167,36 +163,12 @@ class Game(BoxLayout):
                 continue
             print('established connection with %s:%d' % (host, port))
             self.peers.append((host, port))
+            self.game_model.started = True
             self.messages.clear()
             self.messages.append('')
             self.messages.append('Connection successful!')
             self.messages.append('THE GAME BEGINS!')
             self.update_label()
-
-    def init_board(self, num_boards=1):
-        '''
-        Initialize game.
-        Can initialize with more game boards for more players!
-        '''
-
-        self.num_boards = int(num_boards)
-        self.board = {}
-        self.board_size = [8*num_boards, 8]
-        self.num_players = num_boards * 2
-        for who, (x, y0, y1) in enumerate([(0, 0, 1), (0, 7, 6), (8, 0, 1), (8, 7, 6)][:self.num_players]):
-            for dx, piece in enumerate(chess.first_row):
-                piece(who, (x+dx, y0), self)
-                chess.Pawn(who, (x+dx, y1), self)
-
-    def add_action(self, act_type, *params):
-        'Queue an action to be executed'
-        self.cur_actions.append((act_type, params))
-
-    def in_bounds(self, pos):
-        for x, s in zip(pos, self.board_size):
-            if not (0 <= x < s):
-                return False
-        return True
 
     def nick(self, i):
         return self.nicknames.get(i, 'anonymouse')
@@ -207,11 +179,11 @@ class Game(BoxLayout):
         if not command:
             return
         if command[:1] == '/':
-            self.add_action(*command[1:].split())
+            self.game_model.add_action(*command[1:].split())
             return
         if self.peers:
             # Chat
-            self.add_action('msg', command)
+            self.game_model.add_action('msg', command)
             return
         connect_thread = threading.Thread(target=self.connect_thread_go, args=(command, ))
         self.threads.append(connect_thread)
@@ -224,7 +196,7 @@ class Game(BoxLayout):
         url = 'http://game-match.herokuapp.com/connect/chess2/%s/%s/' % (self.address.replace(' ', '%20'), addr.replace(' ', '%20'))
         print('looking up host at %s' % url)
         self.add_peers(urllib.request.urlopen(url).read().decode('utf-8'))
-        self.player = 1
+        self.game_model.player = 1
 
     @quiet_action
     def action_nick(self, i, *words):
@@ -240,18 +212,17 @@ class Game(BoxLayout):
 
     @quiet_action
     def action_move(self, _id, src, dst):
-        if src not in self.board:
+        if src not in self.game_model.board:
             return
-        self.board[src].move(dst)
+        self.game_model.board[src].move(dst)
 
     def action_reset(self, _id, num_boards=1):
-        self.init_board(int(num_boards))
+        self.game_model.init(int(num_boards))
         self.board_view.reset()
         self.potential_pieces = []
-        self.last_start = self.counter
 
     def action_replay(self, i):
-        self.iter_actions[self.counter][i] = [('endreplay', ())]
+        self.iter_actions[self.game_model.counter][i] = [('endreplay', ())]
         self.replay_counter = self.last_start
         self.action_reset(i, self.num_boards)
         self.is_replay = True
@@ -263,7 +234,7 @@ class Game(BoxLayout):
     def action_become(self, i, player):
         player = int(player)
         if i == self.instance_id:
-            self.player = player
+            self.game_model.player = player
         if player is None:
             player_str = 'spectator'
         else:
@@ -287,7 +258,7 @@ class Game(BoxLayout):
         packet = marshal.dumps((
             self.instance_id,
             [(i, self.iter_actions.setdefault(i, {}).setdefault(self.instance_id, []))
-                for i in range(max(0, self.counter-latency), self.counter+latency)]))
+                for i in range(max(0, self.game_model.counter-latency), self.game_model.counter+latency)]))
         for peer in self.peers:
             self.socket.sendto(packet, 0, peer)
         while poll(self.socket):
@@ -299,14 +270,14 @@ class Game(BoxLayout):
     def act(self):
         if not self.peers and not self.dev_mode:
             return
-        if self.counter < latency:
-            self.counter += 1
+        if self.game_model.counter < latency:
+            self.game_model.counter += 1
             return
-        if len(self.iter_actions.get(self.counter, {})) <= len(self.peers):
+        if len(self.iter_actions.get(self.game_model.counter, {})) <= len(self.peers):
             # We haven't got communications from all peers for this iteration.
             # So we'll wait.
             return
-        all_actions = sorted(self.iter_actions[self.counter].items())
+        all_actions = sorted(self.iter_actions[self.game_model.counter].items())
         if self.is_replay:
             all_actions += sorted(self.iter_actions[self.replay_counter].items())
             self.replay_counter += 1
@@ -326,14 +297,14 @@ class Game(BoxLayout):
                         except:
                             self.messages.append('action ' + action_type + ' failed')
         self.update_label()
-        self.counter += 1
+        self.game_model.counter += 1
 
     def on_clock(self, _interval):
         self.communicate()
 
-        if self.instance_id not in self.iter_actions.setdefault(self.counter+latency, {}):
-            self.iter_actions[self.counter+latency][self.instance_id] = self.cur_actions
-            self.cur_actions = []
+        if self.instance_id not in self.iter_actions.setdefault(self.game_model.counter+latency, {}):
+            self.iter_actions[self.game_model.counter+latency][self.instance_id] = self.game_model.cur_actions
+            self.game_model.cur_actions = []
 
         self.act()
 
