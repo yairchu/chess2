@@ -52,10 +52,8 @@ class Game(BoxLayout):
         self.cur_actions = []
         self.iter_actions = {}
         self.peers = []
-        self.action_reset(self.instance_id)
         self.last_selected_at_dst = {}
         self.is_replay = False
-        self.player = 0
         self.player_freeze = {}
         self.dev_mode = dev_mode
         self.socket = None
@@ -89,6 +87,9 @@ class Game(BoxLayout):
                     self.text_input.focus = True
             self.text_input.bind(focus=steal_focus)
         self.info_pane.add_widget(self.text_input)
+
+        self.action_reset(self.instance_id)
+        self.player = 0
 
         self.messages.append('')
         self.messages.append('Welcome to Chess 2!')
@@ -186,15 +187,6 @@ class Game(BoxLayout):
             for dx, piece in enumerate(chess.first_row):
                 piece(who, (x+dx, y0), self)
                 chess.Pawn(who, (x+dx, y1), self)
-        self.shuffle_sets()
-
-    def shuffle_sets(self):
-        'Randomly change which chess piece images sets are used'
-        a = [0, 2, 4]
-        b = [1, 3, 5]
-        random.shuffle(a)
-        random.shuffle(b)
-        self.chess_sets_perm = [[a, b][i%2][i//2] for i in range(6)]
 
     def add_action(self, act_type, *params):
         'Queue an action to be executed'
@@ -257,6 +249,7 @@ class Game(BoxLayout):
 
     def action_reset(self, _id, num_boards=1):
         self.init_board(int(num_boards))
+        self.board_view.reset()
         self.player = None
         self.potential_pieces = []
         self.last_start = self.counter

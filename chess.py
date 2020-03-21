@@ -19,7 +19,7 @@ class Piece:
 
     def image(self):
         'Get image for piece'
-        return self._images[self.game.chess_sets_perm[self.player]]
+        return self._images[self.game.board_view.chess_sets_perm[self.player]]
 
     def side(self):
         return self.player % 2

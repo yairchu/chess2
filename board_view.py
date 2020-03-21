@@ -1,5 +1,6 @@
 import itertools
 import operator
+import random
 
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
@@ -23,6 +24,15 @@ class BoardView(Widget):
     def reset(self):
         self.selected = None
         self.is_dragging = False
+        self.shuffle_sets()
+
+    def shuffle_sets(self):
+        'Randomly change which chess piece images sets are used'
+        a = [0, 2, 4]
+        b = [1, 3, 5]
+        random.shuffle(a)
+        random.shuffle(b)
+        self.chess_sets_perm = [[a, b][i%2][i//2] for i in range(6)]
 
     def show_board(self):
         cols, see = self.board_info()
