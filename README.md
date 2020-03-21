@@ -53,3 +53,9 @@ Chess 2 is played vs friends over the network.
     pyinstaller -F main.y
     copy chess.png dist
 
+### Build the iOS app
+
+* Clone a clean project directory without any build artifacts
+* Copy the `stun` python module to the project directory
+* Follow the instructions at https://kivy.org/doc/stable/guide/packaging-ios.html and use the clean source directory
+

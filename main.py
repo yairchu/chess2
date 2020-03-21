@@ -22,11 +22,13 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.widget import Widget
+from kivy.utils import platform
 import stun
 
 import chess
 
 num_msg_lines = 6
+is_mobile = platform in ['ios', 'android']
 
 def poll(sock):
     return select.select([sock], [], [], 0)[0] != []
@@ -84,15 +86,15 @@ class Game(BoxLayout):
 
         self.text_input = TextInput(
             multiline=False,
-            text_validate_unfocus=False,
+            text_validate_unfocus=is_mobile,
             size_hint=(1, 0),
             size_hint_min_y=60)
-        def steal_focus(*args):
-            if not self.text_input.focus:
-                self.text_input.focus = True
-        self.text_input.bind(
-            on_text_validate=self.handle_text_input,
-            focus=steal_focus)
+        self.text_input.bind(on_text_validate=self.handle_text_input)
+        if not is_mobile:
+            def steal_focus(*args):
+                if not self.text_input.focus:
+                    self.text_input.focus = True
+            self.text_input.bind(focus=steal_focus)
         self.info_pane.add_widget(self.text_input)
 
         self.messages.append('')
@@ -521,4 +523,5 @@ class Chess2App(App):
         self.game.done = True
 
 if __name__ == '__main__':
+    Window.softinput_mode = 'pan'
     Chess2App().run()
