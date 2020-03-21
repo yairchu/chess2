@@ -250,7 +250,6 @@ class Game(BoxLayout):
     def action_reset(self, _id, num_boards=1):
         self.init_board(int(num_boards))
         self.board_view.reset()
-        self.player = None
         self.potential_pieces = []
         self.last_start = self.counter
 
