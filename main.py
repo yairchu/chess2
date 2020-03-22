@@ -126,7 +126,10 @@ class Game(BoxLayout):
     def action_move(self, _id, src, dst):
         if src not in self.game_model.board:
             return
-        self.game_model.board[src].move(dst)
+        piece = self.game_model.board[src]
+        if piece.move(dst):
+            self.messages.append('%s %s moved' % (self.player_str(piece.player), type(piece).__name__.lower()))
+            self.update_label()
 
     def action_reset(self, _id, num_boards=1):
         self.game_model.init(int(num_boards))
