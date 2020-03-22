@@ -9,7 +9,6 @@ class GameModel:
         self.counter = 0
         self.cur_actions = []
         self.started = False
-        self.player_freeze = {}
         self.is_replay = False
 
     def init(self, num_boards=1):
@@ -18,10 +17,11 @@ class GameModel:
         Can initialize with more game boards for more players!
         '''
 
+        self.player_freeze = {}
+        self.last_start = self.counter
         self.num_boards = int(num_boards)
         self.board = {}
         self.board_size = [8*num_boards, 8]
-        self.last_start = self.counter
         self.num_players = num_boards * 2
         for who, (x, y0, y1) in enumerate([(0, 0, 1), (0, 7, 6), (8, 0, 1), (8, 7, 6)][:self.num_players]):
             for dx, piece in enumerate(chess.first_row):

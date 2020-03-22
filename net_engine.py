@@ -10,12 +10,16 @@ import stun
 
 import env
 
-latency = 5
-
 def poll(sock):
     return select.select([sock], [], [], 0)[0] != []
 
+def any_actions(actions):
+    return any(acts for _, acts in actions)
+
 class NetEngine:
+    latency = 5
+    replay_max_wait = 30
+
     def __init__(self, game):
         self.game = game
         self.socket = None
@@ -23,8 +27,8 @@ class NetEngine:
         self.threads = []
         self.iter_actions = {}
         self.peers = []
-        self.is_replay = False
         self.address = None
+        self.should_start_replay = False
 
         net_thread = threading.Thread(target=self.net_thread_go)
         self.threads.append(net_thread)
@@ -124,8 +128,8 @@ class NetEngine:
             [(i, self.iter_actions.setdefault(i, {}).setdefault(self.instance_id, []))
                 for i in
                 range(
-                    max(0, self.game.game_model.counter-latency),
-                    self.game.game_model.counter+latency)]))
+                    max(0, self.game.game_model.counter-self.latency),
+                    self.game.game_model.counter+self.latency)]))
         for peer in self.peers:
             self.socket.sendto(packet, 0, peer)
         while poll(self.socket):
@@ -134,20 +138,33 @@ class NetEngine:
             for i, actions in peer_iter_actions:
                 self.iter_actions.setdefault(i, {})[peer_id] = actions
 
+    def get_replay_actions(self):
+        return sorted(self.iter_actions.get(self.game.game_model.counter, {}).items())
+
     def act(self):
-        if not self.peers and not env.dev_mode:
-            return
-        if self.game.game_model.counter < latency:
-            self.game.game_model.counter += 1
-            return
-        if len(self.iter_actions.get(self.game.game_model.counter, {})) <= len(self.peers):
-            # We haven't got communications from all peers for this iteration.
-            # So we'll wait.
-            return
-        all_actions = sorted(self.iter_actions[self.game.game_model.counter].items())
-        if self.is_replay:
-            all_actions += sorted(self.iter_actions.get(self.replay_counter, {}).items())
-            self.replay_counter += 1
+        if self.game.game_model.is_replay:
+            all_actions = self.get_replay_actions()
+            if any_actions(all_actions):
+                self.replay_wait = 0
+            else:
+                self.replay_wait += 1
+                if self.replay_wait == self.replay_max_wait:
+                    self.replay_wait = 0
+                    while not any_actions(all_actions) and self.game.game_model.counter+1 < self.replay_stop:
+                        self.game.game_model.counter += 1
+                        all_actions = self.get_replay_actions()
+        else:
+            if not self.peers and not env.dev_mode:
+                return
+            if self.game.game_model.counter < self.latency:
+                self.game.game_model.counter += 1
+                return
+            if len(self.iter_actions.get(self.game.game_model.counter, {})) <= len(self.peers):
+                # We haven't got communications from all peers for this iteration.
+                # So we'll wait.
+                return
+            all_actions = sorted(self.iter_actions[self.game.game_model.counter].items())
+
         for i, actions in all_actions:
             for action_type, params in actions:
                 action_func = getattr(self.game, 'action_'+action_type, None)
@@ -163,21 +180,31 @@ class NetEngine:
                             action_func(i, *params)
                         except:
                             self.game.messages.append('action ' + action_type + ' failed')
+
         self.game.update_label()
         self.game.game_model.counter += 1
+
+        if self.game.game_model.is_replay and self.game.game_model.counter == self.replay_stop:
+            self.game.game_model.is_replay = False
+            self.game.action_reset(self.instance_id, self.game.game_model.num_boards)
+
+        if self.should_start_replay:
+            self.should_start_replay = False
+            print('start replay!')
+            self.game.game_model.is_replay = True
+            self.replay_stop = self.game.game_model.counter
+            self.game.game_model.counter = self.game.last_start
+            self.replay_wait = 0
+            self.game.action_reset(self.instance_id, self.game.game_model.num_boards)
 
     def iteration(self):
         self.communicate()
 
-        if self.instance_id not in self.iter_actions.setdefault(self.game.game_model.counter+latency, {}):
-            self.iter_actions[self.game.game_model.counter+latency][self.instance_id] = self.game.game_model.cur_actions
+        if self.instance_id not in self.iter_actions.setdefault(self.game.game_model.counter+self.latency, {}):
+            self.iter_actions[self.game.game_model.counter+self.latency][self.instance_id] = self.game.game_model.cur_actions
             self.game.game_model.cur_actions = []
 
         self.act()
 
     def start_replay(self):
-        self.iter_actions[self.game.game_model.counter][self.instance_id] = [('quiet_endreplay', ())]
-        self.game.game_model.is_replay = True
-        self.replay_counter = self.game.last_start
-        self.game.action_reset(self.instance_id, self.game.game_model.num_boards)
-        self.is_replay = True
+        self.should_start_replay = True

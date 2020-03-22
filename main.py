@@ -144,10 +144,6 @@ class Game(BoxLayout):
         self.game_model.is_replay = False
         self.action_reset(i, self.game_model.num_boards)
 
-    @quiet_action
-    def action_quiet_endreplay(self, i):
-        self.action_endreplay(i)
-
     def player_str(self, player):
         if player is None:
             return 'spectator'
@@ -176,6 +172,8 @@ class Game(BoxLayout):
         self.messages.append('commands: /help | /reset | /nick <nickname> | /replay | /credits')
 
     def king_captured(self, who):
+        if self.game_model.is_replay:
+            return
         winner = 1 - who%2
         self.score[winner] += 1
         self.messages.append('')

@@ -61,7 +61,7 @@ class BoardView(Widget):
                             texture=piece.image(self.chess_sets_perm),
                             pos=[int(last_screen_pos[i]+(new_screen_pos[i]-last_screen_pos[i])*pos_between) for i in range(2)],
                             size=sq)
-                if piece is self.selected:
+                if piece is self.selected and not self.game.is_replay:
                     transparent = True
                 Color(1, 1, 1, .5 if transparent else 1)
                 Rectangle(
@@ -69,7 +69,7 @@ class BoardView(Widget):
                     pos=self.screen_pos(pos),
                     size=sq)
 
-            if self.selected is not None and self.dst_pos is not None:
+            if self.selected is not None and self.dst_pos is not None and not self.game.is_replay:
                 Color(1, 1, 1, .5)
                 Rectangle(
                     texture=self.selected.image(self.chess_sets_perm),
