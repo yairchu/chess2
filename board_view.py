@@ -42,10 +42,13 @@ class BoardView(Widget):
             for (x, y), col in cols.items():
                 sx, sy = self.screen_pos((x, y))
                 Color(*[x/255 for x in col])
-                if (x, y) in self.game.board and self.game.board[x, y].freeze_until > self.game.counter:
-                    Rectangle(pos=(sx+3, sy+3), size=(self.square_size-7, self.square_size-7))
-                else:
-                    Rectangle(pos=(sx, sy), size=sq)
+                Rectangle(pos=(sx, sy), size=sq)
+                if (x, y) in self.game.board:
+                    piece = self.game.board[x, y]
+                    if self.game.board[x, y].freeze_until > self.game.counter:
+                        freeze_ratio = (piece.freeze_until - self.game.counter) / piece.freeze_time
+                        Color(.7, .7, .7)
+                        Rectangle(pos=(sx, sy), size=(self.square_size * freeze_ratio, self.square_size))
 
             for pos, piece in self.game.board.items():
                 if pos not in see:
