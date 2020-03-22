@@ -44,6 +44,7 @@ Chess 2 is played vs friends over the network.
     # Remove unneeded resources to save some space
     rm dist/Chess\ 2.app/Contents/Frameworks/lib*.dylib
     rm -rf dist/Chess\ 2.app/Contents/Resources/lib/{tcl,tk}*
+    rm -r dist/Chess\ 2.app/Contents/Resources/lib/python3.8/numpy
 
 (this worked for me on macOS 10.14.6 with Python 3.8.2 and kivy v2.0.0rc1)
 
@@ -52,7 +53,7 @@ Chess 2 is played vs friends over the network.
     pip install pyinstaller
     pyinstaller -F main.y
     copy chess.png dist
-    copy C:\Users\IEUser\AppData\Local\Programs\Python\Python<VER>\share\sdl2\bin\libpng<VER>.dll dist
+    copy <PYTHONPATH>\share\sdl2\bin\libpng<VER>.dll dist
 
 ### Build the iOS app
 
