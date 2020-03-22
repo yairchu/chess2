@@ -8,8 +8,10 @@ class GameModel:
         self.player = 0
         self.counter = 0
         self.cur_actions = []
-        self.started = False
         self.is_replay = False
+        self.board = {}
+        self.board_size = [4, 4]
+        self.is_tutorial = False
 
     def init(self, num_boards=1):
         '''

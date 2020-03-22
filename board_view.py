@@ -151,8 +151,6 @@ class BoardView(Widget):
         self.is_dragging = False
         if self.selected is None or self.dst_pos is None:
             return
-        if not self.game.started and not env.dev_mode:
-            return
         self.game.add_action('move', self.selected.pos, self.dst_pos)
         self.selected = None
 

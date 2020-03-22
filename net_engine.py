@@ -23,25 +23,32 @@ class NetEngine:
     def __init__(self, game):
         self.game = game
         self.socket = None
-        self.done = False
         self.threads = []
+        self.reset()
+        self.instance_id = random.randrange(2**64)
+
+    def reset(self):
         self.iter_actions = {}
         self.peers = []
         self.address = None
         self.should_start_replay = False
 
+    def start(self):
+        self.game.game_model.player = 0
+        self.game.game_model.counter = 0
+        self.should_stop = False
+        self.reset()
         net_thread = threading.Thread(target=self.net_thread_go)
         self.threads.append(net_thread)
-        self.instance_id = random.randrange(2**64)
         if not env.dev_mode:
             net_thread.start()
 
     def net_thread_go(self):
         self.setup_socket()
-        if self.done:
+        if self.should_stop:
             return
         self.setup_addr_name()
-        if self.done:
+        if self.should_stop:
             return
         self.wait_for_connections()
 
@@ -49,7 +56,7 @@ class NetEngine:
         while True:
             local_port = random.randint(1024, 65535)
             try:
-                if self.done:
+                if self.should_stop:
                     return
                 _nat_type, gamehost, gameport = stun.get_ip_info('0.0.0.0', local_port)
                 if gameport is None:
@@ -80,7 +87,7 @@ class NetEngine:
     def wait_for_connections(self):
         while not self.peers:
             time.sleep(5)
-            if self.done:
+            if self.should_stop:
                 return
             url = 'http://game-match.herokuapp.com/lookup/chess2/%s/' % self.address.replace(' ', '%20')
             print('checking game at %s' % url)
@@ -110,7 +117,6 @@ class NetEngine:
                 continue
             print('established connection with %s:%d' % (host, port))
             self.peers.append((host, port))
-            self.game.game_model.started = True
             self.game.messages.clear()
             self.game.messages.append('')
             self.game.messages.append('Connection successful!')
@@ -118,7 +124,7 @@ class NetEngine:
             self.game.update_label()
 
     def active(self):
-        return self.peers or env.dev_mode
+        return self.peers or self.game.game_model.is_tutorial
 
     def communicate(self):
         if self.socket is None:
@@ -154,7 +160,7 @@ class NetEngine:
                         self.game.game_model.counter += 1
                         all_actions = self.get_replay_actions()
         else:
-            if not self.peers and not env.dev_mode:
+            if not self.peers and not self.game.game_model.is_tutorial:
                 return
             if self.game.game_model.counter < self.latency:
                 self.game.game_model.counter += 1

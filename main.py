@@ -6,16 +6,15 @@ from kivy.app import App
 from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
 
 import env
 from board_view import BoardView
 from game_model import GameModel
 from net_engine import NetEngine
-from widgets import WrappedLabel
+from widgets import WrappedLabel, WrappedButton
 
-num_msg_lines = 6
+num_msg_lines = 8
 
 def quiet_action(func):
     func.quiet = True
@@ -35,22 +34,30 @@ class Game(BoxLayout):
         self.board_view = BoardView(self.game_model)
         self.add_widget(self.board_view)
 
-        self.info_pane = BoxLayout(orientation='vertical')
+        self.info_pane = BoxLayout(orientation='vertical', size_hint_min_y=500)
         self.add_widget(self.info_pane)
 
-        row = 70
+        row_args = {'size_hint': (1, 0), 'size_hint_min_y': 70}
 
         self.info_pane.add_widget(WrappedLabel(
             halign='center',
             text='Chess 2: No turns, no sight!',
-            size_hint=(1, 0),
-            size_hint_min_y=row
-            ))
+            **row_args))
+
+        self.info_pane.add_widget(WrappedButton(
+            halign='center',
+            text='Tutorial: How to play',
+            on_press=self.start_tutorial,
+            **row_args))
+        self.info_pane.add_widget(WrappedButton(
+            halign='center',
+            text='Start Game: Play with friends',
+            on_press=self.start_game,
+            **row_args))
 
         self.score_label = WrappedLabel(
             halign='center',
-            size_hint=(1, 0),
-            size_hint_min_y=row)
+            **row_args)
         self.info_pane.add_widget(self.score_label)
 
         self.label = WrappedLabel(halign='center', valign='bottom')
@@ -59,8 +66,7 @@ class Game(BoxLayout):
         self.text_input = TextInput(
             multiline=False,
             text_validate_unfocus=env.is_mobile,
-            size_hint=(1, 0),
-            size_hint_min_y=row)
+            **row_args)
         self.text_input.bind(on_text_validate=self.handle_text_input)
         if not env.is_mobile:
             def steal_focus(*args):
@@ -69,15 +75,41 @@ class Game(BoxLayout):
             self.text_input.bind(focus=steal_focus)
         self.info_pane.add_widget(self.text_input)
 
-        self.action_reset(self.net_engine.instance_id)
-
         self.messages.append('')
         self.messages.append('Welcome to Chess 2!')
-        self.messages.append('Developer Mode' if env.dev_mode else 'Establishing server connection...')
         self.update_label()
 
         self.bind(size=self.resized)
         Clock.schedule_interval(self.on_clock, 1/30)
+
+    def stop_net_engine(self):
+        if not self.net_engine:
+            return
+        self.net_engine.should_stop = True
+
+    def start_game(self, _):
+        self.stop_net_engine()
+        self.net_engine = NetEngine(self)
+        self.messages.clear()
+        self.messages.append('Establishing server connection...')
+        self.update_label()
+        self.game_model.is_tutorial = False
+        self.action_reset()
+        self.net_engine.start()
+
+    def start_tutorial(self, _):
+        self.stop_net_engine()
+        self.messages.clear()
+        self.messages.append('Move the chess pieces and see what happens!')
+        self.messages.append('')
+        self.messages.append('There are no turns!')
+        self.messages.append('There are cool-downs (rate limits) instead.')
+        self.messages.append('')
+        self.messages.append('Also, you only see where your pieces can move, and any piece that threatens the king.')
+        self.messages.append('')
+        self.update_label()
+        self.game_model.is_tutorial = True
+        self.action_reset()
 
     def update_label(self):
         self.score_label.text = 'White: %d   Black: %d' % tuple(self.score)
@@ -131,7 +163,7 @@ class Game(BoxLayout):
             self.messages.append('%s %s moved' % (self.player_str(piece.player), type(piece).__name__.lower()))
             self.update_label()
 
-    def action_reset(self, _id, num_boards=1):
+    def action_reset(self, _id=None, num_boards=1):
         self.game_model.init(int(num_boards))
         self.board_view.reset()
         self.potential_pieces = []
@@ -193,7 +225,7 @@ class Chess2App(App):
         self.game.text_input.focus = True
         return self.game
     def stop(self):
-        self.game.done = True
+        self.game.stop_net_engine()
 
 if __name__ == '__main__':
     Window.softinput_mode = 'pan'
