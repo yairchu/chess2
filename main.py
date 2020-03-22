@@ -39,7 +39,15 @@ class Game(BoxLayout):
         self.info_pane = BoxLayout(orientation='vertical')
         self.add_widget(self.info_pane)
 
-        row = 60
+        row = 70
+
+        self.info_pane.add_widget(WrappedLabel(
+            halign='center',
+            text='Chess 2: No turns, no sight!',
+            size_hint=(1, 0),
+            size_hint_min_y=row
+            ))
+
         self.score_label = WrappedLabel(
             halign='center',
             size_hint=(1, 0),
@@ -82,7 +90,12 @@ class Game(BoxLayout):
         self.info_pane.size_hint = (p, 1) if self.orientation == 'horizontal' else (1, p)
 
     def nick(self, i):
-        return self.nicknames.get(i, 'anonymouse')
+        r = self.nicknames.get(i)
+        if r:
+            return r
+        if i == self.net_engine.instance_id:
+            return self.player_str(self.game_model.player)
+        return 'friend'
 
     def handle_text_input(self, entry):
         command = entry.text
@@ -143,6 +156,7 @@ class Game(BoxLayout):
         player = int(player)
         if i == self.net_engine.instance_id:
             self.game_model.player = player
+            self.board_view.reset()
         self.messages.append(self.nick(i) + ' becomes ' + self.player_str(player))
 
     def action_credits(self, _id):

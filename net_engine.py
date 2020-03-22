@@ -166,7 +166,6 @@ class NetEngine:
         self.game.update_label()
         self.game.game_model.counter += 1
 
-
     def iteration(self):
         self.communicate()
 
