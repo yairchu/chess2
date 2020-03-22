@@ -3,8 +3,10 @@ from itertools import count
 
 from kivy.uix.image import Image
 
+import env
+
 class Piece:
-    freeze_time = 80
+    freeze_time = 0 if env.dev_mode else 80
     last_move_time = 0
 
     last_pos = None

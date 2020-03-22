@@ -1,7 +1,8 @@
 import chess
+import env
 
 class GameModel:
-    player_freeze_time = 20
+    player_freeze_time = 0 if env.dev_mode else 20
 
     def __init__(self):
         self.player = 0
