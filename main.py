@@ -3,7 +3,6 @@ A networked real-time strategy game based on Chess
 '''
 
 import marshal
-import os
 import random
 import select
 import socket
@@ -18,15 +17,13 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
-from kivy.utils import platform
 import stun
 
-import chess
+import env
 from board_view import BoardView
 from game_model import GameModel
 
 num_msg_lines = 6
-is_mobile = platform in ['ios', 'android']
 
 def poll(sock):
     return select.select([sock], [], [], 0)[0] != []
@@ -39,7 +36,7 @@ def quiet_action(func):
     return func
 
 class Game(BoxLayout):
-    def __init__(self, dev_mode=False, **kwargs):
+    def __init__(self, **kwargs):
         super(Game, self).__init__(**kwargs)
         self.game_model = GameModel()
         self.game_model.king_captured = self.king_captured
@@ -53,16 +50,15 @@ class Game(BoxLayout):
         self.peers = []
         self.last_selected_at_dst = {}
         self.is_replay = False
-        self.dev_mode = dev_mode
         self.socket = None
         self.threads = []
         self.score = [0, 0]
         net_thread = threading.Thread(target=self.net_thread_go)
         self.threads.append(net_thread)
-        if not dev_mode:
+        if not env.dev_mode:
             net_thread.start()
 
-        self.board_view = BoardView(self.game_model, dev_mode)
+        self.board_view = BoardView(self.game_model)
         self.add_widget(self.board_view)
 
         self.info_pane = BoxLayout(orientation='vertical')
@@ -83,11 +79,11 @@ class Game(BoxLayout):
 
         self.text_input = TextInput(
             multiline=False,
-            text_validate_unfocus=is_mobile,
+            text_validate_unfocus=env.is_mobile,
             size_hint=(1, 0),
             size_hint_min_y=row)
         self.text_input.bind(on_text_validate=self.handle_text_input)
-        if not is_mobile:
+        if not env.is_mobile:
             def steal_focus(*args):
                 if not self.text_input.focus:
                     self.text_input.focus = True
@@ -98,7 +94,7 @@ class Game(BoxLayout):
 
         self.messages.append('')
         self.messages.append('Welcome to Chess 2!')
-        self.messages.append('Developer Mode' if dev_mode else 'Establishing server connection...')
+        self.messages.append('Developer Mode' if env.dev_mode else 'Establishing server connection...')
         self.update_label()
 
         self.bind(size=self.resized)
@@ -191,7 +187,7 @@ class Game(BoxLayout):
         if command[:1] == '/':
             self.game_model.add_action(*command[1:].split())
             return
-        if self.peers or self.dev_mode:
+        if self.peers or env.dev_mode:
             # Chat
             self.game_model.add_action('msg', command)
             return
@@ -292,7 +288,7 @@ class Game(BoxLayout):
         self.update_label()
 
     def act(self):
-        if not self.peers and not self.dev_mode:
+        if not self.peers and not env.dev_mode:
             return
         if self.game_model.counter < latency:
             self.game_model.counter += 1
@@ -313,7 +309,7 @@ class Game(BoxLayout):
                 else:
                     if not hasattr(action_func, 'quiet'):
                         self.messages.append(self.nick(i) + ' did ' + action_type.upper())
-                    if self.dev_mode:
+                    if env.dev_mode:
                         action_func(i, *params)
                     else:
                         try:
@@ -337,7 +333,7 @@ class Game(BoxLayout):
 
 class Chess2App(App):
     def build(self):
-        self.game = Game(os.environ.get('CHESS2_DEV'))
+        self.game = Game()
         self.game.text_input.focus = True
         return self.game
     def stop(self):

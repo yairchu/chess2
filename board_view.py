@@ -5,15 +5,13 @@ import random
 from kivy.core.window import Window
 from kivy.graphics import Color, Rectangle
 from kivy.uix.widget import Widget
-from kivy.utils import platform
 
-is_mobile = platform in ['ios', 'android']
+import env
 
 class BoardView(Widget):
-    def __init__(self, game, dev_mode=False, **kwargs):
+    def __init__(self, game, **kwargs):
         super(BoardView, self).__init__(**kwargs)
         self.game = game
-        self.dev_mode = dev_mode
         Window.bind(mouse_pos=self.mouse_motion)
         self.bind(size=self.resized)
         self.mouse_pos = None
@@ -88,7 +86,7 @@ class BoardView(Widget):
 
     def board_info(self):
         flash = {}
-        if not is_mobile and not self.is_dragging:
+        if not env.is_mobile and not self.is_dragging:
             flashy = self.game.board.get(self.mouse_pos)
             if flashy is not None and flashy.player == self.game.player:
                 for pos in flashy.moves():
@@ -146,7 +144,7 @@ class BoardView(Widget):
         self.is_dragging = False
         if self.selected is None or self.dst_pos is None:
             return
-        if not self.game.started and not self.dev_mode:
+        if not self.game.started and not env.dev_mode:
             return
         self.game.add_action('move', self.selected.pos, self.dst_pos)
         self.selected = None
