@@ -146,7 +146,7 @@ class NetEngine:
             return
         all_actions = sorted(self.iter_actions[self.game.game_model.counter].items())
         if self.is_replay:
-            all_actions += sorted(self.iter_actions[self.replay_counter].items())
+            all_actions += sorted(self.iter_actions.get(self.replay_counter, {}).items())
             self.replay_counter += 1
         for i, actions in all_actions:
             for action_type, params in actions:
@@ -155,7 +155,7 @@ class NetEngine:
                     self.game.messages.append(action_type + ': no such action')
                 else:
                     if not hasattr(action_func, 'quiet'):
-                        self.game.messages.append(self.nick(i) + ' did ' + action_type.upper())
+                        self.game.messages.append(self.game.nick(i) + ' did ' + action_type.upper())
                     if env.dev_mode:
                         action_func(i, *params)
                     else:
@@ -174,3 +174,10 @@ class NetEngine:
             self.game.game_model.cur_actions = []
 
         self.act()
+
+    def start_replay(self):
+        self.iter_actions[self.game.game_model.counter][self.instance_id] = [('quiet_endreplay', ())]
+        self.game.game_model.is_replay = True
+        self.replay_counter = self.game.last_start
+        self.game.action_reset(self.instance_id, self.game.game_model.num_boards)
+        self.is_replay = True

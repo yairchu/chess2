@@ -85,20 +85,21 @@ class BoardView(Widget):
                     size=sq)
 
     def board_info(self):
+        player = None if self.game.is_replay else self.game.player
         flash = {}
         if not env.is_mobile and not self.is_dragging:
             flashy = self.game.board.get(self.mouse_pos)
-            if flashy is not None and flashy.player == self.game.player:
+            if flashy is not None and flashy.player == player:
                 for pos in flashy.moves():
                     flash[pos] = flashy.sight_color
 
         movesee = {}
         see = set()
         for piece in self.game.board.values():
-            if self.game.player is not None and piece.side() != self.game.player%2:
+            if player is not None and piece.side() != player%2:
                 continue
             see.add(piece.pos)
-            if piece.player == self.game.player:
+            if piece.player == player:
                 moves = set(piece.moves())
                 if self.mouse_pos in moves and not self.is_dragging and piece == self.selected:
                     flash[piece.pos] = piece.sight_color
@@ -106,7 +107,7 @@ class BoardView(Widget):
                     movesee[piece.pos] = piece.sight_color
             for dst in itertools.chain(piece.sight()):
                 see.add(dst)
-                if piece.player == self.game.player and dst in moves:
+                if piece.player == player and dst in moves:
                     movesee[dst] = list(map(operator.add, movesee.get(dst, [0]*3), piece.sight_color))
 
         cols = {}
@@ -120,6 +121,8 @@ class BoardView(Widget):
         return cols, see
 
     def on_touch_down(self, event):
+        if self.game.is_replay:
+            return
         self.calc_mouse_pos(event.pos)
         if event.is_mouse_scrolling:
             if [] == self.potential_pieces:
@@ -134,10 +137,14 @@ class BoardView(Widget):
             self.dst_pos = None
 
     def mouse_motion(self, _win, pos):
+        if self.game.is_replay:
+            return
         self.raw_mouse_pos = pos
         self.calc_mouse_pos(pos)
 
     def on_touch_up(self, event):
+        if self.game.is_replay:
+            return
         if event.is_mouse_scrolling:
             return
         self.calc_mouse_pos(event.pos)

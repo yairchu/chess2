@@ -9,6 +9,7 @@ class GameModel:
         self.cur_actions = []
         self.started = False
         self.player_freeze = {}
+        self.is_replay = False
 
     def init(self, num_boards=1):
         '''

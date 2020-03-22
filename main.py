@@ -27,10 +27,9 @@ class Game(BoxLayout):
         self.game_model = GameModel()
         self.game_model.king_captured = self.king_captured
         self.net_engine = NetEngine(self)
+
         self.nicknames = {}
         self.messages = []
-        self.last_start = 0
-        self.last_selected_at_dst = {}
         self.score = [0, 0]
 
         self.board_view = BoardView(self.game_model)
@@ -133,15 +132,18 @@ class Game(BoxLayout):
         self.game_model.init(int(num_boards))
         self.board_view.reset()
         self.potential_pieces = []
+        self.last_start = self.game_model.counter
 
-    def action_replay(self, i):
-        self.iter_actions[self.game_model.counter][i] = [('endreplay', ())]
-        self.replay_counter = self.last_start
-        self.action_reset(i, self.num_boards)
-        self.is_replay = True
+    def action_replay(self, _id):
+        self.net_engine.start_replay()
 
-    def action_endreplay(self, _id):
-        self.is_replay = False
+    def action_endreplay(self, i):
+        self.game_model.is_replay = False
+        self.action_reset(i, self.game_model.num_boards)
+
+    @quiet_action
+    def action_quiet_endreplay(self, i):
+        self.action_endreplay(i)
 
     def player_str(self, player):
         if player is None:
@@ -173,12 +175,11 @@ class Game(BoxLayout):
     def king_captured(self, who):
         winner = 1 - who%2
         self.score[winner] += 1
-        self.game_model.init(self.game_model.num_boards)
-        self.board_view.reset()
         self.messages.append('')
         self.messages.append('%s King Captured!' % self.player_str(who))
         self.messages.append('%s wins!' % self.player_str(winner))
         self.update_label()
+        self.net_engine.start_replay()
 
     def on_clock(self, _interval):
         self.net_engine.iteration()
