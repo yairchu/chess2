@@ -101,13 +101,19 @@ class Game(BoxLayout):
         self.stop_net_engine()
         self.messages.clear()
         self.messages.append('Move the chess pieces and see what happens!')
-        self.messages.append('')
-        self.messages.append('There are no turns!')
-        self.messages.append('There are cool-downs (rate limits) instead.')
-        self.messages.append('')
-        self.messages.append('Also, you only see where your pieces can move, and any piece that threatens the king.')
-        self.messages.append('')
         self.update_label()
+        self.tutorial_messages = [
+            'Keep moving the pieces at your own pace.',
+            'Each piece has its own color, and the board is painted to show where it can move.',
+            'You only see where your pieces can move',
+            'You will also see any piece that threatens the king.',
+            'There are no turns!',
+            'There are cool-downs (rate limits) instead.',
+            'The game is played with friends over the internet.',
+            'To start a game both you and your friend need to click "Start Game".',
+            'Then either you or the friend should type the game identifier that the other was given.',
+            'This concludes our tutorial!',
+            ]
         self.game_model.is_tutorial = True
         self.action_reset()
 
@@ -162,6 +168,9 @@ class Game(BoxLayout):
         if piece.move(dst):
             self.messages.append('%s %s moved' % (self.player_str(piece.player), type(piece).__name__.lower()))
             self.update_label()
+            if self.game_model.is_tutorial and self.tutorial_messages:
+                self.messages.append('')
+                self.messages.append(self.tutorial_messages.pop(0))
 
     def action_reset(self, _id=None, num_boards=1):
         self.game_model.init(int(num_boards))
