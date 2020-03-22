@@ -15,13 +15,13 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 import stun
 
 import env
 from board_view import BoardView
 from game_model import GameModel
+from widgets import WrappedLabel
 
 num_msg_lines = 6
 
@@ -65,16 +65,13 @@ class Game(BoxLayout):
         self.add_widget(self.info_pane)
 
         row = 60
-        self.score_label = Label(
+        self.score_label = WrappedLabel(
             halign='center',
             size_hint=(1, 0),
             size_hint_min_y=row)
         self.info_pane.add_widget(self.score_label)
 
-        self.label = Label(halign='center', valign='bottom')
-        def update_label_text_size(*args):
-            self.label.text_size = (self.label.width, None)
-        self.label.bind(width=update_label_text_size)
+        self.label = WrappedLabel(halign='center', valign='bottom')
         self.info_pane.add_widget(self.label)
 
         self.text_input = TextInput(
