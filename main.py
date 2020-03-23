@@ -14,13 +14,15 @@ from game_model import GameModel
 from net_engine import NetEngine
 from widgets import WrappedLabel, WrappedButton
 
-num_msg_lines = 8
+num_msg_lines = 3 if env.is_mobile else 8
 
 def quiet_action(func):
     func.quiet = True
     return func
 
 class Game(BoxLayout):
+    game_title = 'Chess 2: No turns, no sight!'
+
     def __init__(self, **kwargs):
         super(Game, self).__init__(**kwargs)
         self.game_model = GameModel()
@@ -39,21 +41,20 @@ class Game(BoxLayout):
 
         row_args = {'size_hint': (1, 0), 'size_hint_min_y': 70}
 
-        self.info_pane.add_widget(WrappedLabel(
-            halign='center',
-            text='Chess 2: No turns, no sight!',
-            **row_args))
+        if not env.is_mobile:
+            self.info_pane.add_widget(WrappedLabel(halign='center', text=self.game_title, **row_args))
 
-        self.info_pane.add_widget(WrappedButton(
+        self.button_pane = BoxLayout(orientation='vertical', size_hint=(1, .4))
+        self.info_pane.add_widget(self.button_pane)
+
+        self.button_pane.add_widget(WrappedButton(
             halign='center',
             text='Tutorial: How to play',
-            on_press=self.start_tutorial,
-            **row_args))
-        self.info_pane.add_widget(WrappedButton(
+            on_press=self.start_tutorial))
+        self.button_pane.add_widget(WrappedButton(
             halign='center',
-            text='Start Game: Play with friends',
-            on_press=self.start_game,
-            **row_args))
+            text='Start Game' if env.is_mobile else 'Start Game: Play with friends',
+            on_press=self.start_game))
 
         self.score_label = WrappedLabel(
             halign='center',
@@ -76,7 +77,7 @@ class Game(BoxLayout):
         self.info_pane.add_widget(self.text_input)
 
         self.messages.append('')
-        self.messages.append('Welcome to Chess 2!')
+        self.messages.append(self.game_title if env.is_mobile else 'Welcome to Chess 2!')
         self.update_label()
 
         self.bind(size=self.resized)
@@ -124,6 +125,14 @@ class Game(BoxLayout):
 
     def resized(self, _widget, size):
         self.orientation = 'horizontal' if size[0] > size[1] else 'vertical'
+        if self.orientation == 'horizontal':
+            self.button_pane.orientation = 'vertical'
+            self.button_pane.size_hint = (1, .4)
+            self.button_pane.size_hint_min_y = 0
+        else:
+            self.button_pane.orientation = 'horizontal'
+            self.button_pane.size_hint = (1, .4)
+            self.button_pane.size_hint_min_y = 70
         p = 1/3
         self.info_pane.size_hint = (p, 1) if self.orientation == 'horizontal' else (1, p)
 

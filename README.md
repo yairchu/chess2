@@ -51,7 +51,7 @@ Chess 2 is played vs friends over the network.
 ### Building a Windows exe
 
     pip install pyinstaller
-    pyinstaller -F main.y
+    pyinstaller -F main.py
     copy chess.png dist
     copy <PYTHONPATH>\share\sdl2\bin\libpng<VER>.dll dist
 
