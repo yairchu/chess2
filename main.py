@@ -88,16 +88,18 @@ class Game(BoxLayout):
         self.net_engine.should_stop = True
 
     def start_game(self, _):
+        self.game_model.mode = 'connect'
+        self.score = [0, 0]
         self.stop_net_engine()
         self.net_engine = NetEngine(self)
         self.messages.clear()
         self.messages.append('Establishing server connection...')
         self.update_label()
-        self.game_model.is_tutorial = False
         self.action_reset()
         self.net_engine.start()
 
     def start_tutorial(self, _):
+        self.game_model.mode = 'tutorial'
         self.stop_net_engine()
         self.messages.clear()
         self.messages.append('Move the chess pieces and see what happens!')
@@ -114,7 +116,6 @@ class Game(BoxLayout):
             'Then either you or the friend should type the game identifier that the other was given.',
             'This concludes our tutorial!',
             ]
-        self.game_model.is_tutorial = True
         self.action_reset()
 
     def update_label(self):
@@ -142,7 +143,7 @@ class Game(BoxLayout):
         if command[:1] == '/':
             self.game_model.add_action(*command[1:].split())
             return
-        if self.net_engine.active():
+        if self.game_model.active():
             # Chat
             self.game_model.add_action('msg', command)
             return
@@ -168,7 +169,7 @@ class Game(BoxLayout):
         if piece.move(dst):
             self.messages.append('%s %s moved' % (self.player_str(piece.player), type(piece).__name__.lower()))
             self.update_label()
-            if self.game_model.is_tutorial and self.tutorial_messages:
+            if self.game_model.mode == 'tutorial' and self.tutorial_messages:
                 self.messages.append('')
                 self.messages.append(self.tutorial_messages.pop(0))
 
@@ -176,14 +177,6 @@ class Game(BoxLayout):
         self.game_model.init(int(num_boards))
         self.board_view.reset()
         self.potential_pieces = []
-        self.last_start = self.game_model.counter
-
-    def action_replay(self, _id):
-        self.net_engine.start_replay()
-
-    def action_endreplay(self, i):
-        self.game_model.is_replay = False
-        self.action_reset(i, self.game_model.num_boards)
 
     def player_str(self, player):
         if player is None:
@@ -210,10 +203,10 @@ class Game(BoxLayout):
         '''.split('\n'))
 
     def action_help(self, _id):
-        self.messages.append('commands: /help | /reset | /nick <nickname> | /replay | /credits')
+        self.messages.append('commands: /help | /reset | /nick <nickname> | /credits')
 
     def king_captured(self, who):
-        if self.game_model.is_replay:
+        if self.game_model.mode == 'replay':
             return
         winner = 1 - who%2
         self.score[winner] += 1

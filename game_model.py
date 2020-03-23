@@ -6,12 +6,17 @@ class GameModel:
 
     def __init__(self):
         self.player = 0
-        self.counter = 0
-        self.cur_actions = []
-        self.is_replay = False
+        self.mode = None
         self.board = {}
         self.board_size = [4, 4]
-        self.is_tutorial = False
+        self.reset()
+
+    def reset(self):
+        self.counter = 0
+        self.cur_actions = []
+
+    def active(self):
+        return self.mode in ['tutorial', 'play']
 
     def init(self, num_boards=1):
         '''
@@ -19,8 +24,8 @@ class GameModel:
         Can initialize with more game boards for more players!
         '''
 
+        self.reset()
         self.player_freeze = {}
-        self.last_start = self.counter
         self.num_boards = int(num_boards)
         self.board = {}
         self.board_size = [8*num_boards, 8]

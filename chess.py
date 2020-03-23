@@ -16,7 +16,6 @@ class Piece:
         self.pos = pos
         self.freeze_until = 0
         self.game = game
-        self.board = game.board
         game.board[pos] = self
 
     def image(self, chess_sets_perm):
@@ -27,8 +26,8 @@ class Piece:
         return self.player % 2
 
     def die(self):
-        if self.board[self.pos] == self:
-            del self.board[self.pos]
+        if self.game.board[self.pos] == self:
+            del self.game.board[self.pos]
         self.on_die()
 
     def on_die(self):
@@ -36,17 +35,17 @@ class Piece:
         pass
 
     def move(self, pos):
-        if self.board[self.pos] is not self or pos not in self.moves():
+        if self.game.board[self.pos] is not self or pos not in self.moves():
             # Situation changed since move queued, can't perform this move!
             return False
         assert isinstance(pos[0], int)
-        del self.board[self.pos]
+        del self.game.board[self.pos]
         self.last_pos = self.pos
         self.last_move_time = self.game.counter
         self.pos = pos
-        if pos in self.board:
-            self.board[pos].die()
-        self.board[self.pos] = self
+        if pos in self.game.board:
+            self.game.board[pos].die()
+        self.game.board[self.pos] = self
         self.freeze_until = self.game.counter+self.freeze_time
         self.game.player_freeze[self.player] = self.game.counter+self.game.player_freeze_time
         return True
@@ -64,13 +63,13 @@ class Piece:
     def base_moves(self):
         for streak in self._moves(*self.pos):
             for dst in streak:
-                if dst in self.board and self.board[dst].side() == self.side():
+                if dst in self.game.board and self.game.board[dst].side() == self.side():
                     break
                 if self.game.in_bounds(dst):
                     yield dst
                 else:
                     break
-                if dst in self.board:
+                if dst in self.game.board:
                     break
 
 class Rook(Piece):
@@ -115,8 +114,8 @@ class King(Piece):
             for pos in streak:
                 if not self.game.in_bounds(pos):
                     break
-                if pos in self.board:
-                    if self.pos in self.board[pos].base_moves():
+                if pos in self.game.board:
+                    if self.pos in self.game.board[pos].base_moves():
                         yield pos
                     break
     def _moves(self, x, y):
@@ -149,12 +148,12 @@ class Pawn(Piece):
         if y == start_row:
             m.append((x, y+2*delta))
         for c, p in enumerate(m):
-            if p in self.board:
+            if p in self.game.board:
                 m = m[:c]
                 break
         yield m
         for a in [x-1, x+1]:
-            if (a, y+delta) in self.board:
+            if (a, y+delta) in self.game.board:
                 yield [(a, y+delta)]
 
 first_row = [Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook]

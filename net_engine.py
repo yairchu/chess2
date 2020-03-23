@@ -28,9 +28,12 @@ class NetEngine:
         self.instance_id = random.randrange(2**64)
 
     def reset(self):
-        self.iter_actions = {}
         self.peers = []
         self.address = None
+        self.new_game()
+
+    def new_game(self):
+        self.iter_actions = {}
         self.should_start_replay = False
 
     def start(self):
@@ -121,10 +124,9 @@ class NetEngine:
             self.game.messages.append('')
             self.game.messages.append('Connection successful!')
             self.game.messages.append('THE GAME BEGINS!')
+            self.game.game_model.mode = 'play'
+            self.new_game()
             self.game.update_label()
-
-    def active(self):
-        return self.peers or self.game.game_model.is_tutorial
 
     def communicate(self):
         if self.socket is None:
@@ -148,7 +150,7 @@ class NetEngine:
         return sorted(self.iter_actions.get(self.game.game_model.counter, {}).items())
 
     def act(self):
-        if self.game.game_model.is_replay:
+        if self.game.game_model.mode == 'replay':
             all_actions = self.get_replay_actions()
             if any_actions(all_actions):
                 self.replay_wait = 0
@@ -159,9 +161,7 @@ class NetEngine:
                     while not any_actions(all_actions) and self.game.game_model.counter+1 < self.replay_stop:
                         self.game.game_model.counter += 1
                         all_actions = self.get_replay_actions()
-        else:
-            if not self.peers and not self.game.game_model.is_tutorial:
-                return
+        elif self.game.game_model.active():
             if self.game.game_model.counter < self.latency:
                 self.game.game_model.counter += 1
                 return
@@ -170,6 +170,8 @@ class NetEngine:
                 # So we'll wait.
                 return
             all_actions = sorted(self.iter_actions[self.game.game_model.counter].items())
+        else:
+            return
 
         for i, actions in all_actions:
             for action_type, params in actions:
@@ -190,16 +192,18 @@ class NetEngine:
         self.game.update_label()
         self.game.game_model.counter += 1
 
-        if self.game.game_model.is_replay and self.game.game_model.counter == self.replay_stop:
-            self.game.game_model.is_replay = False
+        if self.game.game_model.mode == 'replay' and self.game.game_model.counter == self.replay_stop:
+            self.new_game()
+            self.game.game_model.mode = 'play'
             self.game.action_reset(self.instance_id, self.game.game_model.num_boards)
+        assert not self.game.game_model.mode == 'replay' or self.game.game_model.counter < self.replay_stop
 
         if self.should_start_replay:
             self.should_start_replay = False
             print('start replay!')
-            self.game.game_model.is_replay = True
+            self.game.game_model.mode = 'replay'
             self.replay_stop = self.game.game_model.counter
-            self.game.game_model.counter = self.game.last_start
+            self.game.game_model.counter = 0
             self.replay_wait = 0
             self.game.action_reset(self.instance_id, self.game.game_model.num_boards)
 

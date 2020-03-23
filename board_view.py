@@ -64,7 +64,7 @@ class BoardView(Widget):
                             texture=piece.image(self.chess_sets_perm),
                             pos=[int(last_screen_pos[i]+(new_screen_pos[i]-last_screen_pos[i])*pos_between) for i in range(2)],
                             size=sq)
-                if piece is self.selected and not self.game.is_replay:
+                if piece is self.selected and self.game.active():
                     transparent = True
                 Color(1, 1, 1, .5 if transparent else 1)
                 Rectangle(
@@ -72,7 +72,7 @@ class BoardView(Widget):
                     pos=self.screen_pos(pos),
                     size=sq)
 
-            if self.selected is not None and self.dst_pos is not None and not self.game.is_replay:
+            if self.selected is not None and self.dst_pos is not None and self.game.active():
                 Color(1, 1, 1, .5)
                 Rectangle(
                     texture=self.selected.image(self.chess_sets_perm),
@@ -88,7 +88,7 @@ class BoardView(Widget):
                     size=sq)
 
     def board_info(self):
-        player = None if self.game.is_replay else self.game.player
+        player = None if self.game.mode == 'replay' else self.game.player
         flash = {}
         if not env.is_mobile and not self.is_dragging:
             flashy = self.game.board.get(self.mouse_pos)
@@ -124,7 +124,7 @@ class BoardView(Widget):
         return cols, see
 
     def on_touch_down(self, event):
-        if self.game.is_replay:
+        if not self.game.active():
             return
         self.calc_mouse_pos(event.pos)
         if event.is_mouse_scrolling:
@@ -140,13 +140,13 @@ class BoardView(Widget):
             self.dst_pos = None
 
     def mouse_motion(self, _win, pos):
-        if self.game.is_replay:
+        if not self.game.active():
             return
         self.raw_mouse_pos = pos
         self.calc_mouse_pos(pos)
 
     def on_touch_up(self, event):
-        if self.game.is_replay:
+        if not self.game.active():
             return
         if event.is_mouse_scrolling:
             return
