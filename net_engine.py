@@ -160,7 +160,11 @@ class NetEngine:
             packet, peer = self.socket.recvfrom(0x1000)
             peer_id, peer_iter_actions = marshal.loads(packet)
             for i, actions in peer_iter_actions:
-                self.iter_actions.setdefault(i, {})[peer_id] = actions
+                acts = self.iter_actions.setdefault(i, {})
+                if peer_id in acts:
+                    assert acts[peer_id] == actions
+                else:
+                    acts[peer_id] = actions
 
         if self.last_comm_time is None:
             return
