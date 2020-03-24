@@ -221,7 +221,7 @@ class NetEngine:
         if self.game.game_model.mode == 'replay' and self.game.game_model.counter == self.replay_stop:
             self.new_game()
             self.game.game_model.mode = 'play'
-            self.game.action_reset(self.instance_id, self.game.game_model.num_boards)
+            self.game.reset_board(self.game.game_model.num_boards)
         assert not self.game.game_model.mode == 'replay' or self.game.game_model.counter < self.replay_stop
 
         if self.should_start_replay:

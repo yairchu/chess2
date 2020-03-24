@@ -118,7 +118,8 @@ class Game(BoxLayout):
             'Then either you or the friend should type the game identifier that the other was given.',
             'This concludes our tutorial!',
             ]
-        self.action_reset(i, self.game_model.num_boards)
+        self.reset_board(self.game_model.num_boards)
+        self.net_engine.new_game()
 
     def update_label(self):
         self.score_label.text = 'White: %d   Black: %d' % tuple(self.score)
