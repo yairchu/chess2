@@ -12,9 +12,9 @@ Download the app from the [releases page](https://github.com/yairchu/chess2/rele
 
 * Install Python (version 3.3 or above)
 * In your terminal:
-* `pip install kivy --pre --extra-index-url https://kivy.org/downloads/simple/`
-* `pip install pystun3`
-* To run the game type `python main.py` from the game's folder
+* `python3 -m pip install kivy --pre --extra-index-url https://kivy.org/downloads/simple/`
+* `python3 -m pip install pystun3`
+* To run the game type `python3 main.py` from the game's folder
 
 ## Playing
 
@@ -40,7 +40,7 @@ Chess 2 is played vs friends over the network.
 
 ### Building a macOS app
 
-    python setup.py py2app
+    python3 setup.py py2app
     # Remove unneeded resources to save some space
     rm dist/Chess\ 2.app/Contents/Frameworks/lib*.dylib
     rm -rf dist/Chess\ 2.app/Contents/Resources/lib/{tcl,tk}*
