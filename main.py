@@ -130,7 +130,7 @@ class Game(BoxLayout):
         if self.orientation == 'horizontal':
             self.button_pane.orientation = 'vertical'
             self.button_pane.size_hint = (1, .4)
-            self.button_pane.size_hint_min_y = 0
+            self.button_pane.size_hint_min_y = 140
         else:
             self.button_pane.orientation = 'horizontal'
             self.button_pane.size_hint = (1, .4)
