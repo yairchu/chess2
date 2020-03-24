@@ -4,6 +4,7 @@ import select
 import socket
 import threading
 import time
+import urllib.error
 import urllib.request
 
 import stun
@@ -30,6 +31,7 @@ class NetEngine:
     def reset(self):
         self.peers = []
         self.address = None
+        self.last_comm_time = None
         self.new_game()
 
     def new_game(self):
@@ -102,12 +104,23 @@ class NetEngine:
         connect_thread.start()
 
     def connect_thread_go(self, addr):
+        self.game.messages.append('Establishing connection with: %s' % addr)
+        self.game.update_label()
         while self.address is None:
             # Net thread didn't finish
             time.sleep(1)
-        url = 'http://game-match.herokuapp.com/connect/chess2/%s/%s/' % (self.address.replace(' ', '%20'), addr.replace(' ', '%20'))
+        url = 'http://game-match.herokuapp.com/connect/chess2/%s/%s/' % (self.address.replace(' ', '%20'), addr.lower().replace(' ', '%20'))
         print('looking up host at %s' % url)
-        self.add_peers(urllib.request.urlopen(url).read().decode('utf-8'))
+        try:
+            response = urllib.request.urlopen(url).read()
+        except urllib.error.HTTPError as err:
+            if err.code == 404:
+                self.game.messages.append('No such game: %s' % addr)
+            else:
+                self.game.messages.append('Server error when looking up game: %s' % addr)
+            self.game.update_label()
+            return
+        self.add_peers(response.decode('utf-8'))
         self.game.game_model.player = 1
 
     def add_peers(self, peers_str):
@@ -127,6 +140,8 @@ class NetEngine:
             self.game.game_model.mode = 'play'
             self.new_game()
             self.game.update_label()
+            self.last_comm_time = time.time()
+            self.comm_gap_msg_at = 10
 
     def communicate(self):
         if self.socket is None:
@@ -141,10 +156,21 @@ class NetEngine:
         for peer in self.peers:
             self.socket.sendto(packet, 0, peer)
         while poll(self.socket):
+            self.last_comm_time = time.time()
             packet, peer = self.socket.recvfrom(0x1000)
             peer_id, peer_iter_actions = marshal.loads(packet)
             for i, actions in peer_iter_actions:
                 self.iter_actions.setdefault(i, {})[peer_id] = actions
+
+        if self.last_comm_time is None:
+            return
+        time_since_comm = time.time() - self.last_comm_time
+        if time_since_comm >= self.comm_gap_msg_at:
+            self.game.messages.append('No communication for %d seconds' % self.comm_gap_msg_at)
+            self.game.update_label()
+            self.comm_gap_msg_at += 5
+        elif time_since_comm < 5:
+            self.comm_gap_msg_at = 5
 
     def get_replay_actions(self):
         return sorted(self.iter_actions.get(self.game.game_model.counter, {}).items())
