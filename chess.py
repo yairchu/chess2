@@ -175,8 +175,9 @@ class Pawn(Piece):
         delta = -1 if self.side() else 1
         x, y = self.pos
         for a in [x-1, x+1]:
-            if self.game.in_bounds((a, y+delta)):
-                yield a, y+delta
+            dst = a, y+delta
+            if self.game.in_bounds(dst):
+                yield dst
     def _moves(self, x, y):
         start_row, delta = (6, -1) if self.side() else (1, 1)
         m = [(x, y+delta)]
