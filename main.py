@@ -99,9 +99,10 @@ class Game(BoxLayout):
         self.action_reset()
         self.net_engine.start()
 
-    def start_tutorial(self, _):
+    def start_tutorial(self, i):
         self.game_model.mode = 'tutorial'
         self.stop_net_engine()
+        self.net_engine = NetEngine(self)
         self.messages.clear()
         self.messages.append('Move the chess pieces and see what happens!')
         self.update_label()
@@ -117,7 +118,7 @@ class Game(BoxLayout):
             'Then either you or the friend should type the game identifier that the other was given.',
             'This concludes our tutorial!',
             ]
-        self.action_reset()
+        self.action_reset(i, self.game_model.num_boards)
 
     def update_label(self):
         self.score_label.text = 'White: %d   Black: %d' % tuple(self.score)
@@ -184,6 +185,7 @@ class Game(BoxLayout):
 
     def action_reset(self, _id=None, num_boards=1):
         self.game_model.init(int(num_boards))
+        self.net_engine.new_game()
         self.board_view.reset()
         self.potential_pieces = []
 

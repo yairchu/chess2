@@ -54,16 +54,17 @@ class BoardView(Widget):
                 if pos not in see:
                     continue
                 transparent = False
-                move_time = (self.game.counter - piece.last_move_time)*0.1
-                if move_time < 1:
-                    pos_between = move_time
-                    if piece.last_pos is not None:
-                        last_screen_pos = self.screen_pos(piece.last_pos)
-                        new_screen_pos = self.screen_pos(pos)
-                        Rectangle(
-                            texture=piece.image(self.chess_sets_perm),
-                            pos=[int(last_screen_pos[i]+(new_screen_pos[i]-last_screen_pos[i])*pos_between) for i in range(2)],
-                            size=sq)
+                if piece.last_move_time is not None:
+                    move_time = (self.game.counter - piece.last_move_time)*0.1
+                    if move_time < 1:
+                        pos_between = move_time
+                        if piece.last_pos is not None:
+                            last_screen_pos = self.screen_pos(piece.last_pos)
+                            new_screen_pos = self.screen_pos(pos)
+                            Rectangle(
+                                texture=piece.image(self.chess_sets_perm),
+                                pos=[int(last_screen_pos[i]+(new_screen_pos[i]-last_screen_pos[i])*pos_between) for i in range(2)],
+                                size=sq)
                 if piece is self.selected and self.game.active():
                     transparent = True
                 Color(1, 1, 1, .5 if transparent else 1)

@@ -7,7 +7,7 @@ import env
 
 class Piece:
     freeze_time = 0 if env.dev_mode else 80
-    last_move_time = 0
+    last_move_time = None
 
     last_pos = None
 
@@ -108,6 +108,7 @@ class Knight(Piece):
 class King(Piece):
     sight_color = (0, 1, 1)
     freeze_time = 60
+
     def sight(self):
         yield from self.base_moves()
         for streak in itertools.chain(Knight._moves(*self.pos), Queen._moves(*self.pos)):
@@ -118,11 +119,45 @@ class King(Piece):
                     if self.pos in self.game.board[pos].base_moves():
                         yield pos
                     break
+
+    def move(self, pos):
+        (x, y) = pos
+        (sx, sy) = self.pos
+        if abs(x - sx) <= 1:
+            return super(King, self).move(pos)
+        # Castling
+        assert y == sy
+        dir = 1 if x > sx else -1
+        piece = self.castling(sx, sy, dir)
+        if piece is None:
+            return
+        del self.game.board[self.pos]
+        self.pos = pos
+        self.game.board[pos] = self
+        del self.game.board[piece.pos]
+        piece.pos = (sx + dir, sy)
+        self.game.board[piece.pos] = piece
+
     def _moves(self, x, y):
         for a in range(x-1, x+2):
             for b in range(y-1, y+2):
                 if (a, b) != (x, y):
                     yield [(a, b)]
+        if self.last_move_time is not None:
+            return
+        for dir in [-1, 1]:
+            if self.castling(x, y, dir):
+                yield [(x+dir*2, y)]
+
+    def castling(self, x, y, dir):
+        dest = x+dir
+        while self.game.in_bounds((dest, y)):
+            piece = self.game.board.get((dest, y))
+            if piece is not None:
+                if abs(dest-x) > 2 and type(piece) == Rook and piece.last_move_time is None:
+                    return piece
+                break
+            dest += dir
 
 class Pawn(Piece):
     sight_color = (0.5, 0.5, 0.5)

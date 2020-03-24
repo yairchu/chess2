@@ -9,6 +9,7 @@ class GameModel:
         self.mode = None
         self.board = {}
         self.board_size = [4, 4]
+        self.num_boards = 1
         self.reset()
 
     def reset(self):
