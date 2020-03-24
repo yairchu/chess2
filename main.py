@@ -184,10 +184,12 @@ class Game(BoxLayout):
                 self.messages.append(self.tutorial_messages.pop(0))
 
     def action_reset(self, _id=None, num_boards=1):
-        self.game_model.init(int(num_boards))
         self.net_engine.new_game()
+        self.reset_board(int(num_boards))
+
+    def reset_board(self, num_boards):
+        self.game_model.init(num_boards)
         self.board_view.reset()
-        self.potential_pieces = []
 
     def player_str(self, player):
         if player is None:

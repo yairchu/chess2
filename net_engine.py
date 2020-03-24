@@ -205,7 +205,7 @@ class NetEngine:
             self.replay_stop = self.game.game_model.counter
             self.game.game_model.counter = 0
             self.replay_wait = 0
-            self.game.action_reset(self.instance_id, self.game.game_model.num_boards)
+            self.game.reset_board(self.game.game_model.num_boards)
 
     def iteration(self):
         self.communicate()
