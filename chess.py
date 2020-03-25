@@ -161,7 +161,7 @@ class King(Piece):
 
 class Pawn(Piece):
     sight_color = (0.5, 0.5, 0.5)
-    egg_time = 60
+    egg_time = 0 if env.dev_mode else 60
     def move(self, pos):
         if not super(Pawn, self).move(pos):
             return False

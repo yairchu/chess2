@@ -58,3 +58,46 @@ class GameModel:
     def add_action(self, act_type, *params):
         'Queue an action to be executed'
         self.cur_actions.append((act_type, params))
+
+    def action_msg(self, nick, *txt):
+        self.add_message('%s: %s' % (nick, ' '.join(txt)))
+    action_msg.quiet = True
+
+    def action_move(self, _nick, src, dst):
+        if src not in self.board:
+            return
+        piece = self.board[src]
+        if piece.move(dst):
+            self.add_message('%s %s moved' % (self.player_str(piece.player), type(piece).__name__.lower()))
+            if self.mode == 'tutorial' and self.tutorial_messages:
+                self.add_message('')
+                self.add_message(self.tutorial_messages.pop(0))
+    action_move.quiet = True
+
+    def action_reset(self, _nick, num_boards=None):
+        self.init(None if num_boards is None else int(num_boards))
+
+    def player_str(self, player):
+        if player is None:
+            return 'spectator'
+        r = ['White', 'Black'][player%2]
+        if self.num_boards > 1:
+            r += '#'+str(player//2)
+        return r
+
+    def action_become(self, nick, player):
+        player = int(player)
+        self.add_message(nick + ' becomes ' + self.player_str(player))
+        if nick == 'You':
+            self.player = player
+            for x in self.on_init:
+                x()
+    action_become.quiet = True
+
+    def action_credits(self, _nick):
+        self.add_message('''
+            Programming: Yair Chuchem
+            Chess sets/Graphics: Armondo H. Marroquin and Eric Bentzen (http://www.enpassant.dk/chess/fonteng.htm)
+            Logic/Concept: Ancient People, Yair Chuchem, and fellow Play-Testers
+            Programming Infrastructure: Python (Guido van Rossum and friends), Pygame/SDL (Pete Shinners and friends)
+            ''')

@@ -21,9 +21,8 @@ class NetEngine:
     latency = 5
     replay_max_wait = 30
 
-    def __init__(self, game_model, get_action):
+    def __init__(self, game_model):
         self.game = game_model
-        self.get_action = get_action
         self.socket = None
         self.threads = []
         self.reset()
@@ -200,18 +199,19 @@ class NetEngine:
             return
 
         for i, actions in all_actions:
+            nick = 'You' if i == self.instance_id else 'Friend'
             for action_type, params in actions:
-                action_func = self.get_action(action_type)
+                action_func = getattr(self.game, 'action_'+action_type, None)
                 if action_func is None:
                     self.game.add_message(action_type + ': no such action')
                 else:
                     if not hasattr(action_func, 'quiet'):
                         self.game.add_message(action_type.upper())
                     if env.dev_mode:
-                        action_func(i, *params)
+                        action_func(nick, *params)
                     else:
                         try:
-                            action_func(i, *params)
+                            action_func(nick, *params)
                         except:
                             self.game.add_message('action ' + action_type + ' failed')
 
