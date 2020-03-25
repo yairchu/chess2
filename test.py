@@ -42,6 +42,8 @@ class TestSync(unittest.TestCase):
             if r < 0.3:
                 inst.net_engine.iteration()
             elif r < 0.99999:
+                if len(inst.game.cur_actions) > 3:
+                    continue
                 (src, piece) = random.choice(list(inst.game.board.items()))
                 opts = list(piece.moves())
                 if not opts:

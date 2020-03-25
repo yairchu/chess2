@@ -17,6 +17,7 @@ class GameModel:
 
     def reset(self):
         self.counter = 0
+        self.last_start = 0
         self.cur_actions = []
 
     def add_message(self, msg):
@@ -35,7 +36,6 @@ class GameModel:
 
         if num_boards is not None:
             self.num_boards = num_boards
-        self.reset()
         self.player_freeze = {}
         self.board = {}
         self.board_size = [8*self.num_boards, 8]

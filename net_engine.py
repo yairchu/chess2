@@ -33,17 +33,13 @@ class NetEngine:
         self.address = None
         self.last_comm_time = None
         self.comm_gap_msg_at = 10
-        self.new_game()
-
-    def new_game(self):
-        self.iter_actions = {}
         self.should_start_replay = False
+        self.iter_actions = {}
 
     def start(self):
         self.game.player = 0
-        self.game.counter = 0
+        self.game.reset()
         self.should_stop = False
-        self.reset()
         net_thread = threading.Thread(target=self.net_thread_go)
         self.threads.append(net_thread)
         if not env.dev_mode:
@@ -136,7 +132,6 @@ class NetEngine:
             self.game.add_message('Connection successful!')
             self.game.add_message('THE GAME BEGINS!')
             self.game.mode = 'play'
-            self.new_game()
             self.last_comm_time = time.time()
             self.comm_gap_msg_at = 10
 
@@ -159,7 +154,7 @@ class NetEngine:
             for i, actions in peer_iter_actions:
                 acts = self.iter_actions.setdefault(i, {})
                 if peer_id in acts:
-                    assert acts[peer_id] == actions
+                    assert acts[peer_id] == actions, '%s %s' % (acts[peer_id], actions)
                 else:
                     acts[peer_id] = actions
 
@@ -219,8 +214,8 @@ class NetEngine:
         self.game.counter += 1
 
         if self.game.mode == 'replay' and self.game.counter == self.replay_stop:
-            self.new_game()
             self.game.mode = 'play'
+            self.game.last_start = self.game.counter
             self.game.init()
         assert not self.game.mode == 'replay' or self.game.counter < self.replay_stop
 
@@ -229,14 +224,14 @@ class NetEngine:
             print('start replay!')
             self.game.mode = 'replay'
             self.replay_stop = self.game.counter
-            self.game.counter = 0
+            self.game.counter = self.game.last_start
             self.replay_wait = 0
             self.game.init()
 
     def iteration(self):
         self.communicate()
 
-        if self.instance_id not in self.iter_actions.setdefault(self.game.counter+self.latency, {}):
+        if self.game.mode != 'replay' and self.instance_id not in self.iter_actions.setdefault(self.game.counter+self.latency, {}):
             self.iter_actions[self.game.counter+self.latency][self.instance_id] = self.game.cur_actions
             self.game.cur_actions = []
 
