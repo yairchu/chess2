@@ -160,13 +160,6 @@ class Game(BoxLayout):
         return getattr(self, 'action_'+action_type, None)
 
     @quiet_action
-    def action_nick(self, i, *words):
-        name = '-'.join(words)
-        if not name:
-            name = 'null-boy'
-        self.game_model.add_message(self.nick(i) + ' is now ' + name)
-
-    @quiet_action
     def action_msg(self, i, *txt):
         self.game_model.add_message('%s: %s' % (self.nick(i), ' '.join(txt)))
 
