@@ -116,7 +116,7 @@ class Game(BoxLayout):
             'This concludes our tutorial!',
             ]
         self.game_model.init()
-        self.net_engine.new_game()
+        self.net_engine.iter_actions = {}
 
     def update_label(self):
         self.score_label.text = 'White: %d   Black: %d' % tuple(self.score)
