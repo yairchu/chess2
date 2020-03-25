@@ -30,7 +30,6 @@ class Game(BoxLayout):
         self.game_model.on_message.append(self.update_label)
         self.net_engine = NetEngine(self.game_model, self.get_action)
 
-        self.nicknames = {}
         self.score = [0, 0]
 
         self.board_view = BoardView(self.game_model)
@@ -137,9 +136,6 @@ class Game(BoxLayout):
         self.info_pane.size_hint = (p, 1) if self.orientation == 'horizontal' else (1, p)
 
     def nick(self, i):
-        r = self.nicknames.get(i)
-        if r:
-            return r
         if i == self.net_engine.instance_id:
             return self.player_str(self.game_model.player)
         return 'friend'
@@ -167,7 +163,6 @@ class Game(BoxLayout):
         if not name:
             name = 'null-boy'
         self.game_model.add_message(self.nick(i) + ' is now ' + name)
-        self.nicknames[i] = name
 
     @quiet_action
     def action_msg(self, i, *txt):
@@ -213,7 +208,7 @@ class Game(BoxLayout):
         ''')
 
     def action_help(self, _id):
-        self.game_model.add_message('commands: /help | /reset | /nick <nickname> | /credits')
+        self.game_model.add_message('commands: /help | /reset | /credits')
 
     def king_captured(self, who):
         if self.game_model.mode == 'replay':

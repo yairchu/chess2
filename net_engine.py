@@ -206,7 +206,7 @@ class NetEngine:
                     self.game.add_message(action_type + ': no such action')
                 else:
                     if not hasattr(action_func, 'quiet'):
-                        self.game.add_message(self.game.nick(i) + ' did ' + action_type.upper())
+                        self.game.add_message(action_type.upper())
                     if env.dev_mode:
                         action_func(i, *params)
                     else:
