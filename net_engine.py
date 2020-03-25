@@ -32,6 +32,7 @@ class NetEngine:
         self.peers = []
         self.address = None
         self.last_comm_time = None
+        self.comm_gap_msg_at = 10
         self.new_game()
 
     def new_game(self):
