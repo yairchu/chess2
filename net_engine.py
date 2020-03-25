@@ -21,8 +21,9 @@ class NetEngine:
     latency = 5
     replay_max_wait = 30
 
-    def __init__(self, game):
-        self.game = game
+    def __init__(self, game_model, get_action):
+        self.game = game_model
+        self.get_action = get_action
         self.socket = None
         self.threads = []
         self.reset()
@@ -39,8 +40,8 @@ class NetEngine:
         self.should_start_replay = False
 
     def start(self):
-        self.game.game_model.player = 0
-        self.game.game_model.counter = 0
+        self.game.player = 0
+        self.game.counter = 0
         self.should_stop = False
         self.reset()
         net_thread = threading.Thread(target=self.net_thread_go)
@@ -82,12 +83,11 @@ class NetEngine:
         url = 'http://game-match.herokuapp.com/register/chess2/%s/%d/' % self.my_addr
         print('registering at %s' % url)
         self.address = urllib.request.urlopen(url).read().decode('utf-8')
-        self.game.messages.append('')
-        self.game.messages.append('Your address is:')
-        self.game.messages.append(self.address.upper())
-        self.game.messages.append('')
-        self.game.messages.append('Type the address of a friend to play with them')
-        self.game.update_label()
+        self.game.add_message('')
+        self.game.add_message('Your address is:')
+        self.game.add_message(self.address.upper())
+        self.game.add_message('')
+        self.game.add_message('Type the address of a friend to play with them')
 
     def wait_for_connections(self):
         while not self.peers:
@@ -104,8 +104,7 @@ class NetEngine:
         connect_thread.start()
 
     def connect_thread_go(self, addr):
-        self.game.messages.append('Establishing connection with: %s' % addr)
-        self.game.update_label()
+        self.game.add_message('Establishing connection with: %s' % addr)
         while self.address is None:
             # Net thread didn't finish
             time.sleep(1)
@@ -115,13 +114,12 @@ class NetEngine:
             response = urllib.request.urlopen(url).read()
         except urllib.error.HTTPError as err:
             if err.code == 404:
-                self.game.messages.append('No such game: %s' % addr)
+                self.game.add_message('No such game: %s' % addr)
             else:
-                self.game.messages.append('Server error when looking up game: %s' % addr)
-            self.game.update_label()
+                self.game.add_message('Server error when looking up game: %s' % addr)
             return
         self.add_peers(response.decode('utf-8'))
-        self.game.game_model.player = 1
+        self.game.player = 1
 
     def add_peers(self, peers_str):
         for x in peers_str.split():
@@ -134,12 +132,11 @@ class NetEngine:
             print('established connection with %s:%d' % (host, port))
             self.peers.append((host, port))
             self.game.messages.clear()
-            self.game.messages.append('')
-            self.game.messages.append('Connection successful!')
-            self.game.messages.append('THE GAME BEGINS!')
-            self.game.game_model.mode = 'play'
+            self.game.add_message('')
+            self.game.add_message('Connection successful!')
+            self.game.add_message('THE GAME BEGINS!')
+            self.game.mode = 'play'
             self.new_game()
-            self.game.update_label()
             self.last_comm_time = time.time()
             self.comm_gap_msg_at = 10
 
@@ -151,8 +148,8 @@ class NetEngine:
             [(i, self.iter_actions.setdefault(i, {}).setdefault(self.instance_id, []))
                 for i in
                 range(
-                    max(0, self.game.game_model.counter-self.latency),
-                    self.game.game_model.counter+self.latency)]))
+                    max(0, self.game.counter-self.latency),
+                    self.game.counter+self.latency)]))
         for peer in self.peers:
             self.socket.sendto(packet, 0, peer)
         while poll(self.socket):
@@ -170,17 +167,16 @@ class NetEngine:
             return
         time_since_comm = time.time() - self.last_comm_time
         if time_since_comm >= self.comm_gap_msg_at:
-            self.game.messages.append('No communication for %d seconds' % self.comm_gap_msg_at)
-            self.game.update_label()
+            self.game.add_message('No communication for %d seconds' % self.comm_gap_msg_at)
             self.comm_gap_msg_at += 5
         elif time_since_comm < 5:
             self.comm_gap_msg_at = 5
 
     def get_replay_actions(self):
-        return sorted(self.iter_actions.get(self.game.game_model.counter, {}).items())
+        return sorted(self.iter_actions.get(self.game.counter, {}).items())
 
     def act(self):
-        if self.game.game_model.mode == 'replay':
+        if self.game.mode == 'replay':
             all_actions = self.get_replay_actions()
             if any_actions(all_actions):
                 self.replay_wait = 0
@@ -188,61 +184,60 @@ class NetEngine:
                 self.replay_wait += 1
                 if self.replay_wait == self.replay_max_wait:
                     self.replay_wait = 0
-                    while not any_actions(all_actions) and self.game.game_model.counter+1 < self.replay_stop:
-                        self.game.game_model.counter += 1
+                    while not any_actions(all_actions) and self.game.counter+1 < self.replay_stop:
+                        self.game.counter += 1
                         all_actions = self.get_replay_actions()
-        elif self.game.game_model.active():
-            if self.game.game_model.counter < self.latency:
-                self.game.game_model.counter += 1
+        elif self.game.active():
+            if self.game.counter < self.latency:
+                self.game.counter += 1
                 return
-            if len(self.iter_actions.get(self.game.game_model.counter, {})) <= len(self.peers):
+            if len(self.iter_actions.get(self.game.counter, {})) <= len(self.peers):
                 # We haven't got communications from all peers for this iteration.
                 # So we'll wait.
                 return
-            all_actions = sorted(self.iter_actions[self.game.game_model.counter].items())
+            all_actions = sorted(self.iter_actions[self.game.counter].items())
         else:
             return
 
         for i, actions in all_actions:
             for action_type, params in actions:
-                action_func = getattr(self.game, 'action_'+action_type, None)
+                action_func = self.get_action(action_type)
                 if action_func is None:
-                    self.game.messages.append(action_type + ': no such action')
+                    self.game.add_message(action_type + ': no such action')
                 else:
                     if not hasattr(action_func, 'quiet'):
-                        self.game.messages.append(self.game.nick(i) + ' did ' + action_type.upper())
+                        self.game.add_message(self.game.nick(i) + ' did ' + action_type.upper())
                     if env.dev_mode:
                         action_func(i, *params)
                     else:
                         try:
                             action_func(i, *params)
                         except:
-                            self.game.messages.append('action ' + action_type + ' failed')
+                            self.game.add_message('action ' + action_type + ' failed')
 
-        self.game.update_label()
-        self.game.game_model.counter += 1
+        self.game.counter += 1
 
-        if self.game.game_model.mode == 'replay' and self.game.game_model.counter == self.replay_stop:
+        if self.game.mode == 'replay' and self.game.counter == self.replay_stop:
             self.new_game()
-            self.game.game_model.mode = 'play'
-            self.game.reset_board(self.game.game_model.num_boards)
-        assert not self.game.game_model.mode == 'replay' or self.game.game_model.counter < self.replay_stop
+            self.game.mode = 'play'
+            self.game.init()
+        assert not self.game.mode == 'replay' or self.game.counter < self.replay_stop
 
         if self.should_start_replay:
             self.should_start_replay = False
             print('start replay!')
-            self.game.game_model.mode = 'replay'
-            self.replay_stop = self.game.game_model.counter
-            self.game.game_model.counter = 0
+            self.game.mode = 'replay'
+            self.replay_stop = self.game.counter
+            self.game.counter = 0
             self.replay_wait = 0
-            self.game.reset_board(self.game.game_model.num_boards)
+            self.game.init()
 
     def iteration(self):
         self.communicate()
 
-        if self.instance_id not in self.iter_actions.setdefault(self.game.game_model.counter+self.latency, {}):
-            self.iter_actions[self.game.game_model.counter+self.latency][self.instance_id] = self.game.game_model.cur_actions
-            self.game.game_model.cur_actions = []
+        if self.instance_id not in self.iter_actions.setdefault(self.game.counter+self.latency, {}):
+            self.iter_actions[self.game.counter+self.latency][self.instance_id] = self.game.cur_actions
+            self.game.cur_actions = []
 
         self.act()
 

@@ -27,14 +27,15 @@ class Game(BoxLayout):
         super(Game, self).__init__(**kwargs)
         self.game_model = GameModel()
         self.game_model.king_captured = self.king_captured
-        self.net_engine = NetEngine(self)
+        self.game_model.on_message.append(self.update_label)
+        self.net_engine = NetEngine(self.game_model, self.get_action)
 
         self.nicknames = {}
-        self.messages = []
         self.score = [0, 0]
 
         self.board_view = BoardView(self.game_model)
         self.add_widget(self.board_view)
+        self.game_model.on_init.append(self.board_view.reset)
 
         self.info_pane = BoxLayout(orientation='vertical', size_hint_min_y=500)
         self.add_widget(self.info_pane)
@@ -76,9 +77,8 @@ class Game(BoxLayout):
             self.text_input.bind(focus=steal_focus)
         self.info_pane.add_widget(self.text_input)
 
-        self.messages.append('')
-        self.messages.append(self.game_title if env.is_mobile else 'Welcome to Chess 2!')
-        self.update_label()
+        self.game_model.add_message('')
+        self.game_model.add_message(self.game_title if env.is_mobile else 'Welcome to Chess 2!')
 
         self.bind(size=self.resized)
         Clock.schedule_interval(self.on_clock, 1/30)
@@ -92,20 +92,18 @@ class Game(BoxLayout):
         self.game_model.mode = 'connect'
         self.score = [0, 0]
         self.stop_net_engine()
-        self.net_engine = NetEngine(self)
-        self.messages.clear()
-        self.messages.append('Establishing server connection...')
-        self.update_label()
+        self.net_engine = NetEngine(self.game_model, self.get_action)
+        self.game_model.messages.clear()
+        self.game_model.add_message('Establishing server connection...')
         self.action_reset()
         self.net_engine.start()
 
     def start_tutorial(self, i):
         self.game_model.mode = 'tutorial'
         self.stop_net_engine()
-        self.net_engine = NetEngine(self)
-        self.messages.clear()
-        self.messages.append('Move the chess pieces and see what happens!')
-        self.update_label()
+        self.net_engine = NetEngine(self.game_model, self.get_action)
+        self.game_model.messages.clear()
+        self.game_model.add_message('Move the chess pieces and see what happens!')
         self.tutorial_messages = [
             'Keep moving the pieces at your own pace.',
             'Each piece has its own color, and the board is painted to show where it can move.',
@@ -118,12 +116,12 @@ class Game(BoxLayout):
             'Then either you or the friend should type the game identifier that the other was given.',
             'This concludes our tutorial!',
             ]
-        self.reset_board(self.game_model.num_boards)
+        self.game_model.init()
         self.net_engine.new_game()
 
     def update_label(self):
         self.score_label.text = 'White: %d   Black: %d' % tuple(self.score)
-        self.label.text = '\n'.join(self.messages[-num_msg_lines:])
+        self.label.text = '\n'.join(self.game_model.messages[-num_msg_lines:])
 
     def resized(self, _widget, size):
         self.orientation = 'horizontal' if size[0] > size[1] else 'vertical'
@@ -160,17 +158,20 @@ class Game(BoxLayout):
             return
         self.net_engine.connect(command)
 
+    def get_action(self, action_type):
+        return getattr(self, 'action_'+action_type, None)
+
     @quiet_action
     def action_nick(self, i, *words):
         name = '-'.join(words)
         if not name:
             name = 'null-boy'
-        self.messages.append(self.nick(i) + ' is now ' + name)
+        self.game_model.add_message(self.nick(i) + ' is now ' + name)
         self.nicknames[i] = name
 
     @quiet_action
     def action_msg(self, i, *txt):
-        self.messages.append('%s: %s' % (self.nick(i), ' '.join(txt)))
+        self.game_model.add_message('%s: %s' % (self.nick(i), ' '.join(txt)))
 
     @quiet_action
     def action_move(self, _id, src, dst):
@@ -178,19 +179,14 @@ class Game(BoxLayout):
             return
         piece = self.game_model.board[src]
         if piece.move(dst):
-            self.messages.append('%s %s moved' % (self.player_str(piece.player), type(piece).__name__.lower()))
-            self.update_label()
+            self.game_model.add_message('%s %s moved' % (self.player_str(piece.player), type(piece).__name__.lower()))
             if self.game_model.mode == 'tutorial' and self.tutorial_messages:
-                self.messages.append('')
-                self.messages.append(self.tutorial_messages.pop(0))
+                self.game_model.add_message('')
+                self.game_model.add_message(self.tutorial_messages.pop(0))
 
     def action_reset(self, _id=None, num_boards=1):
         self.net_engine.new_game()
-        self.reset_board(int(num_boards))
-
-    def reset_board(self, num_boards):
-        self.game_model.init(num_boards)
-        self.board_view.reset()
+        self.game_model.init(int(num_boards))
 
     def player_str(self, player):
         if player is None:
@@ -206,28 +202,27 @@ class Game(BoxLayout):
         if i == self.net_engine.instance_id:
             self.game_model.player = player
             self.board_view.reset()
-        self.messages.append(self.nick(i) + ' becomes ' + self.player_str(player))
+        self.game_model.add_message(self.nick(i) + ' becomes ' + self.player_str(player))
 
     def action_credits(self, _id):
-        self.messages.extend('''Credits:
+        self.game_model.add_message('''Credits:
         Programming: Yair Chuchem
         Chess sets/Graphics: Armondo H. Marroquin and Eric Bentzen (http://www.enpassant.dk/chess/fonteng.htm)
         Logic/Concept: Ancient People, Yair Chuchem, and fellow Play-Testers
         Programming Infrastructure: Python (Guido van Rossum and friends), Pygame/SDL (Pete Shinners and friends)
-        '''.split('\n'))
+        ''')
 
     def action_help(self, _id):
-        self.messages.append('commands: /help | /reset | /nick <nickname> | /credits')
+        self.game_model.add_message('commands: /help | /reset | /nick <nickname> | /credits')
 
     def king_captured(self, who):
         if self.game_model.mode == 'replay':
             return
         winner = 1 - who%2
         self.score[winner] += 1
-        self.messages.append('')
-        self.messages.append('%s King Captured!' % self.player_str(who))
-        self.messages.append('%s wins!' % self.player_str(winner))
-        self.update_label()
+        self.game_model.add_message('')
+        self.game_model.add_message('%s King Captured!' % self.player_str(who))
+        self.game_model.add_message('%s wins!' % self.player_str(winner))
         self.net_engine.start_replay()
 
     def on_clock(self, _interval):
