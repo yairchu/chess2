@@ -41,10 +41,17 @@ Chess 2 is played vs friends over the network.
 ### Building a macOS app
 
     python3 setup.py py2app
-    # Remove unneeded resources to save some space
-    rm dist/Chess\ 2.app/Contents/Frameworks/lib*.dylib
-    rm -rf dist/Chess\ 2.app/Contents/Resources/lib/{tcl,tk}*
-    rm -r dist/Chess\ 2.app/Contents/Resources/lib/python3.8/numpy
+    cd dist
+
+    # Remove unneeded resources to reduce app size
+    rm Chess\ 2.app/Contents/Frameworks/lib*.dylib
+    rm -rf Chess\ 2.app/Contents/Resources/lib/{tcl,tk}*
+    rm -r Chess\ 2.app/Contents/Resources/lib/python3.8/numpy
+
+    # Sign and notarize (One needs to join the apple paid developer program for this)
+    codesign --timestamp -s <YOUR_SIGNING_ID> -f --deep Chess\ 2.app
+    zip -r "chess2-mac.zip" "Chess 2.app"
+    xcrun altool -u <APPLE-ID-EMAIL> -p <APP-SPECIFIC-PASSWORD> --notarize-app --primary-bundle-id org.yairchu.chesschase -f dist/Chess\ 2.app/
 
 (this worked for me on macOS 10.14.6 with Python 3.8.2 and kivy v2.0.0rc1)
 
