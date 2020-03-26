@@ -1,6 +1,6 @@
-# Chess 2
+# Chess Chase
 
-Chess 2 is a multi-player real time strategy game based on the classic game of Chess.
+Chess-Chase is a multi-player real time strategy game based on the classic game of Chess.
 
 ## Installing
 
@@ -18,7 +18,7 @@ Download the app from the [releases page](https://github.com/yairchu/chess2/rele
 
 ## Playing
 
-Chess 2 is played vs friends over the network.
+Chess Chase is played vs friends over the network.
 
 * Both players need to open the game
 * At the top of each player an address such as "BASK DAWN ALAN" will appear
@@ -44,14 +44,14 @@ Chess 2 is played vs friends over the network.
     cd dist
 
     # Remove unneeded resources to reduce app size
-    rm Chess\ 2.app/Contents/Frameworks/lib*.dylib
-    rm -rf Chess\ 2.app/Contents/Resources/lib/{tcl,tk}*
-    rm -r Chess\ 2.app/Contents/Resources/lib/python3.8/numpy
+    rm Chess\ Chase.app/Contents/Frameworks/lib*.dylib
+    rm -rf Chess\ Chase.app/Contents/Resources/lib/{tcl,tk}*
+    rm -r Chess\ Chase.app/Contents/Resources/lib/python3.8/numpy
 
     # Sign and notarize (One needs to join the apple paid developer program for this)
-    codesign --timestamp -s <YOUR_SIGNING_ID> -f --deep Chess\ 2.app
-    zip -r "chess2-mac.zip" "Chess 2.app"
-    xcrun altool -u <APPLE-ID-EMAIL> -p <APP-SPECIFIC-PASSWORD> --notarize-app --primary-bundle-id org.yairchu.chesschase -f dist/Chess\ 2.app/
+    codesign --timestamp -s <YOUR_SIGNING_ID> -f --deep Chess\ Chase.app
+    zip -r "chesschase-mac.zip" "Chess Chase.app"
+    xcrun altool -u <APPLE-ID-EMAIL> -p <APP-SPECIFIC-PASSWORD> --notarize-app --primary-bundle-id org.yairchu.chesschase -f chesschase-mac.zip
 
 (this worked for me on macOS 10.14.6 with Python 3.8.2 and kivy v2.0.0rc1)
 

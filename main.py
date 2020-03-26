@@ -17,7 +17,7 @@ from widgets import WrappedLabel, WrappedButton
 num_msg_lines = 3 if env.is_mobile else 8
 
 class Game(BoxLayout):
-    game_title = 'Chess 2: No turns, no sight!'
+    game_title = 'Chess Chase: No turns, no sight!'
 
     def __init__(self, **kwargs):
         super(Game, self).__init__(**kwargs)
@@ -73,7 +73,7 @@ class Game(BoxLayout):
         self.info_pane.add_widget(self.text_input)
 
         self.game_model.add_message('')
-        self.game_model.add_message(self.game_title if env.is_mobile else 'Welcome to Chess 2!')
+        self.game_model.add_message(self.game_title if env.is_mobile else 'Welcome to Chess Chase!')
 
         self.bind(size=self.resized)
         Clock.schedule_interval(self.on_clock, 1/30)
@@ -167,7 +167,7 @@ class Game(BoxLayout):
         self.board_view.update_dst()
         self.board_view.show_board()
 
-class Chess2App(App):
+class ChessChaseApp(App):
     def build(self):
         self.game = Game()
         self.game.text_input.focus = True
@@ -177,4 +177,4 @@ class Chess2App(App):
 
 if __name__ == '__main__':
     Window.softinput_mode = 'pan'
-    Chess2App().run()
+    ChessChaseApp().run()
