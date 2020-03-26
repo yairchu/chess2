@@ -6,3 +6,4 @@ __pycache__/
 /.eggs/
 /stun/
 /apple-id.app-specific-password
+*.appiconset
