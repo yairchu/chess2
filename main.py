@@ -4,6 +4,7 @@ A networked real-time strategy game based on Chess
 
 from kivy.app import App
 from kivy.clock import Clock
+from kivy.config import Config
 from kivy.core.window import Window
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.textinput import TextInput
@@ -176,5 +177,6 @@ class ChessChaseApp(App):
         self.game.stop_net_engine()
 
 if __name__ == '__main__':
+    Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
     Window.softinput_mode = 'pan'
     ChessChaseApp().run()
