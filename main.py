@@ -99,6 +99,7 @@ class Game(BoxLayout):
 
     def start_tutorial(self, i):
         self.game_model.mode = 'tutorial'
+        self.game_model.reset()
         self.restart_net_engine()
         self.game_model.messages.clear()
         self.game_model.add_message('Move the chess pieces and see what happens!')

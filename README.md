@@ -67,4 +67,4 @@ Chess Chase is played vs friends over the network.
 * Clone a clean project directory without any build artifacts
 * Copy the `stun` python module to the project directory
 * Follow the instructions at https://kivy.org/doc/stable/guide/packaging-ios.html and use the clean source directory
-
+* Tick the "Requires full screen" check-box in Xcode's "General" tab
