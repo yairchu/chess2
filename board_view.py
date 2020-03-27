@@ -90,7 +90,7 @@ class BoardView(Widget):
                     size=sq)
 
     def board_info(self):
-        player = None if self.game.mode == 'replay' else self.game.player
+        player = None if self.game.mode == 'replay' else self.game.player()
         flash = {}
         if not env.is_mobile and not self.is_dragging:
             flashy = self.game.board.get(self.mouse_pos)
@@ -136,7 +136,7 @@ class BoardView(Widget):
             self.selected = self.potential_pieces[
                 (self.potential_pieces.index(self.selected)+d)%len(self.potential_pieces)]
             return
-        if self.mouse_pos in self.game.board and self.game.board[self.mouse_pos].player == self.game.player:
+        if self.mouse_pos in self.game.board and self.game.board[self.mouse_pos].player == self.game.player():
             self.is_dragging = True
             self.selected = self.game.board[self.mouse_pos]
             self.dst_pos = None
@@ -161,12 +161,12 @@ class BoardView(Widget):
 
     def calc_mouse_pos(self, pos):
         board_pos = [int((x - sx) // self.square_size) for x, sx in zip(pos, self.pos)]
-        if self.game.player%2 == 1:
+        if (self.game.player() or 0) % 2 == 1:
             board_pos = [s-1-x for x, s in zip(board_pos, self.game.board_size)]
         self.mouse_pos = tuple(board_pos)
 
     def screen_pos(self, pos):
-        if self.game.player%2 == 1:
+        if (self.game.player() or 0) % 2 == 1:
             pos = [s-1-x for x, s in zip(pos, self.game.board_size)]
         return tuple(sx+self.square_size*x for x, sx in zip(pos, self.pos))
 
@@ -182,7 +182,7 @@ class BoardView(Widget):
         self.is_dragging = False
         self.potential_pieces = []
         for piece in self.game.board.values():
-            if piece.player == self.game.player and self.mouse_pos in piece.moves():
+            if piece.player == self.game.player() and self.mouse_pos in piece.moves():
                 self.potential_pieces.append(piece)
         self.potential_pieces.sort(key = lambda x: x.move_preference)
         if [] == self.potential_pieces:

@@ -119,6 +119,7 @@ class Game(BoxLayout):
             'This concludes our tutorial!',
             ]
         self.game_model.init()
+        self.game_model.players[self.game_model.my_id] = 0
         self.net_engine.iter_actions = {}
 
     def update_label(self):

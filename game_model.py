@@ -5,7 +5,6 @@ class GameModel:
     player_freeze_time = 0 if env.dev_mode else 20
 
     def __init__(self):
-        self.player = 0
         self.mode = None
         self.board = {}
         self.board_size = [4, 4]
@@ -13,12 +12,17 @@ class GameModel:
         self.messages = []
         self.on_message = []
         self.on_init = []
+        self.players = {}
+        self.my_id = None
         self.reset()
+        chess.King(0, (3, 0), self)
+        chess.King(1, (0, 3), self)
 
     def reset(self):
         self.counter = 0
         self.last_start = 0
         self.cur_actions = []
+        self.nicknames = {}
 
     def add_message(self, msg):
         self.messages.append(msg)
@@ -27,6 +31,9 @@ class GameModel:
 
     def active(self):
         return self.mode in ['tutorial', 'play']
+
+    def player(self):
+        return self.players.get(self.my_id)
 
     def init(self, num_boards=None):
         '''
@@ -59,10 +66,19 @@ class GameModel:
         'Queue an action to be executed'
         self.cur_actions.append((act_type, params))
 
-    def action_msg(self, nick, *txt):
-        self.add_message('%s: %s' % (nick, ' '.join(txt)))
+    def nick(self, i):
+        r = self.nicknames.get(i)
+        if r:
+            return r
+        player = self.players.get(i)
+        if player is None:
+            return 'Spectator'
+        return self.player_str(player)
 
-    def action_move(self, _nick, src, dst):
+    def action_msg(self, i, *txt):
+        self.add_message('%s: %s' % (self.nick(i), ' '.join(txt)))
+
+    def action_move(self, _id, src, dst):
         if src not in self.board:
             return
         piece = self.board[src]
@@ -71,8 +87,9 @@ class GameModel:
             if self.mode == 'tutorial' and self.tutorial_messages:
                 self.add_message('')
                 self.add_message(self.tutorial_messages.pop(0))
+    action_move.quiet = True
 
-    def action_reset(self, _nick, num_boards=None):
+    def action_reset(self, _id, num_boards=None):
         self.init(None if num_boards is None else int(num_boards))
 
     def player_str(self, player):
@@ -83,11 +100,11 @@ class GameModel:
             r += '#'+str(player//2)
         return r
 
-    def action_become(self, nick, player):
+    def action_become(self, i, player):
         player = int(player)
-        self.add_message(nick + ' becomes ' + self.player_str(player))
-        if nick == 'You':
-            self.player = player
+        self.add_message(self.nick(i) + ' becomes ' + self.player_str(player))
+        self.players[i] = player
+        if i == self.my_id:
             for x in self.on_init:
                 x()
 
@@ -99,5 +116,9 @@ class GameModel:
             Programming Infrastructure: Python (Guido van Rossum and friends), Pygame/SDL (Pete Shinners and friends)
             ''')
 
+    def action_nick(self, i, nick):
+        self.add_message(self.nick(i) + ' renames to ' + nick)
+        self.nicknames[i] = nick
+
     def help(self):
-        self.add_message('commands: /help | /reset | /credits')
+        self.add_message('commands: /help | /nick <name> | /reset | /credits')

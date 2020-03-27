@@ -26,7 +26,7 @@ class NetEngine:
         self.socket = None
         self.threads = []
         self.reset()
-        self.instance_id = random.randrange(2**64)
+        self.game.my_id = random.randrange(2**64)
 
     def reset(self):
         self.peers = []
@@ -37,7 +37,6 @@ class NetEngine:
         self.iter_actions = {}
 
     def start(self):
-        self.game.player = 0
         self.game.reset()
         self.should_stop = False
         net_thread = threading.Thread(target=self.net_thread_go)
@@ -115,7 +114,6 @@ class NetEngine:
                 self.game.add_message('Server error when looking up game: %s' % addr)
             return
         self.add_peers(response.decode('utf-8'))
-        self.game.player = 1
 
     def add_peers(self, peers_str):
         for x in peers_str.split():
@@ -139,8 +137,8 @@ class NetEngine:
         if self.socket is None:
             return
         packet = marshal.dumps((
-            self.instance_id,
-            [(i, self.iter_actions.setdefault(i, {}).setdefault(self.instance_id, []))
+            self.game.my_id,
+            [(i, self.iter_actions.setdefault(i, {}).setdefault(self.game.my_id, []))
                 for i in
                 range(
                     max(0, self.game.counter-self.latency),
@@ -196,8 +194,12 @@ class NetEngine:
         else:
             return
 
+        if self.game.counter == self.latency:
+            # Assign players
+            for player, i in enumerate(i for i, _ in all_actions):
+                self.game.players[i] = player
+
         for i, actions in all_actions:
-            nick = 'You' if i == self.instance_id else 'Friend'
             for action_type, params in actions:
                 action_func = getattr(self.game, 'action_'+action_type, None)
                 if action_func is None:
@@ -205,14 +207,14 @@ class NetEngine:
                 else:
                     prev_messages = len(self.game.messages)
                     if env.dev_mode:
-                        action_func(nick, *params)
+                        action_func(i, *params)
                     else:
                         try:
-                            action_func(nick, *params)
+                            action_func(i, *params)
                         except:
                             self.game.add_message('action ' + action_type + ' failed')
-                    if prev_messages == len(self.game.messages):
-                        self.game.add_message(action_type.upper())
+                    if prev_messages == len(self.game.messages) and not getattr(action_func, 'quiet', False):
+                        self.game.add_message('%s did %s' % (self.game.nick(i), action_type.upper()))
 
         self.game.counter += 1
 
@@ -234,8 +236,8 @@ class NetEngine:
     def iteration(self):
         self.communicate()
 
-        if self.game.mode != 'replay' and self.instance_id not in self.iter_actions.setdefault(self.game.counter+self.latency, {}):
-            self.iter_actions[self.game.counter+self.latency][self.instance_id] = self.game.cur_actions
+        if self.game.mode != 'replay' and self.game.my_id not in self.iter_actions.setdefault(self.game.counter+self.latency, {}):
+            self.iter_actions[self.game.counter+self.latency][self.game.my_id] = self.game.cur_actions
             self.game.cur_actions = []
 
         self.act()
