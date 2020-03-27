@@ -51,7 +51,7 @@ class TestSync(unittest.TestCase):
                 dst = random.choice(opts)
                 inst.game.add_action('move', src, dst)
             else:
-                inst.game.add_action('reset')
+                inst.game.add_action('surrender')
 
 if __name__ == '__main__':
     unittest.main()
