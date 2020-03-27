@@ -153,11 +153,11 @@ class Game(BoxLayout):
                 return
             self.game_model.add_action(*command[1:].split())
             return
-        if self.game_model.active():
-            # Chat
-            self.game_model.add_action('msg', command)
+        if self.game_model.mode is None:
+            self.net_engine.connect(command)
             return
-        self.net_engine.connect(command)
+        # Chat
+        self.game_model.add_action('msg', command)
 
     def king_captured(self, who):
         if self.game_model.mode == 'replay':

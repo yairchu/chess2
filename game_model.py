@@ -89,8 +89,12 @@ class GameModel:
                 self.add_message(self.tutorial_messages.pop(0))
     action_move.quiet = True
 
-    def action_reset(self, _id, num_boards=None):
-        self.init(None if num_boards is None else int(num_boards))
+    def action_surrender(self, i):
+        player = self.players.get(i)
+        if player is None:
+            return
+        self.add_message(self.nick(i) + ' surrendered')
+        self.king_captured(player)
 
     def player_str(self, player):
         if player is None:
@@ -121,4 +125,4 @@ class GameModel:
         self.nicknames[i] = nick
 
     def help(self):
-        self.add_message('commands: /help | /nick <name> | /reset | /credits')
+        self.add_message('commands: /help | /nick <name> | /surrender | /credits')
