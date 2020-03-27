@@ -32,6 +32,7 @@ class Game(BoxLayout):
         self.board_view = BoardView(self.game_model)
         self.add_widget(self.board_view)
         self.game_model.on_init.append(self.board_view.reset)
+        self.game_model.on_init.append(self.resized)
 
         self.info_pane = BoxLayout(orientation='vertical', size_hint_min_y=500)
         self.add_widget(self.info_pane)
@@ -124,18 +125,21 @@ class Game(BoxLayout):
         self.score_label.text = 'White: %d   Black: %d' % tuple(self.score)
         self.label.text = '\n'.join(self.game_model.messages[-num_msg_lines:])
 
-    def resized(self, _widget, size):
-        self.orientation = 'horizontal' if size[0] > size[1] else 'vertical'
+    def resized(self, *args):
+        self.orientation = 'horizontal' if self.size[0] > self.size[1] else 'vertical'
+        p = 1/3
         if self.orientation == 'horizontal':
+            self.info_pane.size_hint = (p, 1)
+            self.board_view.size_hint = (self.game_model.num_boards, 1)
             self.button_pane.orientation = 'vertical'
             self.button_pane.size_hint = (1, .4)
             self.button_pane.size_hint_min_y = 140
         else:
+            self.info_pane.size_hint = (1, p)
+            self.board_view.size_hint = (1, 1 / self.game_model.num_boards)
             self.button_pane.orientation = 'horizontal'
             self.button_pane.size_hint = (1, .4)
             self.button_pane.size_hint_min_y = 70
-        p = 1/3
-        self.info_pane.size_hint = (p, 1) if self.orientation == 'horizontal' else (1, p)
 
     def handle_text_input(self, entry):
         command = entry.text

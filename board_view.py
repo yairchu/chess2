@@ -17,12 +17,13 @@ class BoardView(Widget):
         self.mouse_pos = None
         self.reset()
 
-    def resized(self, a, b):
-        self.square_size = min(self.size) / 8
+    def resized(self, *args):
+        self.square_size = min(p / s for p, s in zip(self.size, self.game.board_size))
 
     def reset(self):
         self.selected = None
         self.is_dragging = False
+        self.resized()
         self.shuffle_sets()
 
     def shuffle_sets(self):
