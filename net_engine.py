@@ -75,7 +75,7 @@ class NetEngine:
         self.socket = sock
 
     def setup_addr_name(self):
-        url = 'http://game-match.herokuapp.com/register/chess2/%s/%d/' % self.my_addr
+        url = 'http://game-match.herokuapp.com/register/chesschase0/%s/%d/' % self.my_addr
         print('registering at %s' % url)
         self.address = urllib.request.urlopen(url).read().decode('utf-8')
         self.game.add_message('')
@@ -89,7 +89,7 @@ class NetEngine:
             time.sleep(5)
             if self.should_stop:
                 return
-            url = 'http://game-match.herokuapp.com/lookup/chess2/%s/' % self.address.replace(' ', '%20')
+            url = 'http://game-match.herokuapp.com/lookup/chesschase0/%s/' % self.address.replace(' ', '%20')
             print('checking game at %s' % url)
             self.add_peers(urllib.request.urlopen(url).read().decode('utf-8'))
 
@@ -103,7 +103,7 @@ class NetEngine:
         while self.address is None:
             # Net thread didn't finish
             time.sleep(1)
-        url = 'http://game-match.herokuapp.com/connect/chess2/%s/%s/' % (self.address.replace(' ', '%20'), addr.lower().replace(' ', '%20'))
+        url = 'http://game-match.herokuapp.com/connect/chesschase0/%s/%s/' % (self.address.replace(' ', '%20'), addr.lower().replace(' ', '%20'))
         print('looking up host at %s' % url)
         try:
             response = urllib.request.urlopen(url).read()
