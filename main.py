@@ -144,7 +144,7 @@ class Game(BoxLayout):
             return
         if command[:1] == '/':
             if command == '/help':
-                self.game_model.add_message('commands: /help | /reset | /credits')
+                self.game_model.help()
                 return
             self.game_model.add_action(*command[1:].split())
             return

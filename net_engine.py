@@ -203,8 +203,7 @@ class NetEngine:
                 if action_func is None:
                     self.game.add_message(action_type + ': no such action')
                 else:
-                    if not hasattr(action_func, 'quiet'):
-                        self.game.add_message(action_type.upper())
+                    prev_messages = len(self.game.messages)
                     if env.dev_mode:
                         action_func(nick, *params)
                     else:
@@ -212,6 +211,8 @@ class NetEngine:
                             action_func(nick, *params)
                         except:
                             self.game.add_message('action ' + action_type + ' failed')
+                    if prev_messages == len(self.game.messages):
+                        self.game.add_message(action_type.upper())
 
         self.game.counter += 1
 

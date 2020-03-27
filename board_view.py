@@ -191,4 +191,3 @@ class BoardView(Widget):
             if self.last_pos != self.dst_pos or self.selected not in self.potential_pieces:
                 self.selected = self.potential_pieces[0]
             self.last_pos = self.dst_pos
-

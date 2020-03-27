@@ -61,7 +61,6 @@ class GameModel:
 
     def action_msg(self, nick, *txt):
         self.add_message('%s: %s' % (nick, ' '.join(txt)))
-    action_msg.quiet = True
 
     def action_move(self, _nick, src, dst):
         if src not in self.board:
@@ -72,7 +71,6 @@ class GameModel:
             if self.mode == 'tutorial' and self.tutorial_messages:
                 self.add_message('')
                 self.add_message(self.tutorial_messages.pop(0))
-    action_move.quiet = True
 
     def action_reset(self, _nick, num_boards=None):
         self.init(None if num_boards is None else int(num_boards))
@@ -92,7 +90,6 @@ class GameModel:
             self.player = player
             for x in self.on_init:
                 x()
-    action_become.quiet = True
 
     def action_credits(self, _nick):
         self.add_message('''
@@ -101,3 +98,6 @@ class GameModel:
             Logic/Concept: Ancient People, Yair Chuchem, and fellow Play-Testers
             Programming Infrastructure: Python (Guido van Rossum and friends), Pygame/SDL (Pete Shinners and friends)
             ''')
+
+    def help(self):
+        self.add_message('commands: /help | /reset | /credits')
