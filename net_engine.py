@@ -176,6 +176,8 @@ class NetEngine:
             if any_actions(all_actions):
                 self.replay_wait = 0
             else:
+                self.game.counter += 1
+                all_actions = self.get_replay_actions()
                 self.replay_wait += 1
                 if self.replay_wait == self.replay_max_wait:
                     self.replay_wait = 0
