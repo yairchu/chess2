@@ -116,8 +116,7 @@ class GameModel:
         self.add_message('''
             Programming: Yair Chuchem
             Chess sets/Graphics: Armondo H. Marroquin and Eric Bentzen (http://www.enpassant.dk/chess/fonteng.htm)
-            Logic/Concept: Ancient People, Yair Chuchem, and fellow Play-Testers
-            Programming Infrastructure: Python (Guido van Rossum and friends), Pygame/SDL (Pete Shinners and friends)
+            github.com/yairchu/chess2
             ''')
 
     def action_nick(self, i, nick):

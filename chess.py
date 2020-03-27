@@ -199,7 +199,7 @@ S = 45
 pieces_image = Image(source='chess.png').texture
 
 for x, piece in enumerate([King, Queen, Rook, Bishop, Knight, Pawn]):
-    piece._images = [pieces_image.get_region(S*x, S*y, S, S) for y in range(6)][::-1]
+    piece._images = [pieces_image.get_region(S*x, S*y, S, S) for y in range(4)][::-1]
 
 for preference, piece in enumerate([King, Pawn, Knight, Bishop, Rook, Queen]):
     piece.move_preference = preference

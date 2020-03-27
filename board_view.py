@@ -28,11 +28,11 @@ class BoardView(Widget):
 
     def shuffle_sets(self):
         'Randomly change which chess piece images sets are used'
-        a = [0, 2, 4]
-        b = [1, 3, 5]
+        a = [0, 2]
+        b = [1, 3]
         random.shuffle(a)
         random.shuffle(b)
-        self.chess_sets_perm = [[a, b][i%2][i//2] for i in range(6)]
+        self.chess_sets_perm = [[a, b][i%2][i//2] for i in range(4)]
 
     def show_board(self):
         cols, see = self.board_info()
