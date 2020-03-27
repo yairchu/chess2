@@ -18,9 +18,9 @@ class Piece:
         self.game = game
         game.board[pos] = self
 
-    def image(self, chess_sets_perm):
+    def image(self):
         'Get image for piece'
-        return self._images[chess_sets_perm[self.player]]
+        return self._images[self.player]
 
     def side(self):
         return self.player % 2
@@ -194,12 +194,11 @@ class Pawn(Piece):
 
 first_row = [Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook]
 
-S = 45
-
 pieces_image = Image(source='chess.png').texture
+S = pieces_image.size[1]/2
 
-for x, piece in enumerate([King, Queen, Rook, Bishop, Knight, Pawn]):
-    piece._images = [pieces_image.get_region(S*x, S*y, S, S) for y in range(4)][::-1]
+for x, piece in enumerate([King, Queen, Bishop, Knight, Rook, Pawn]):
+    piece._images = [pieces_image.get_region(S*x, S*y, S, S) for y in range(2)][::-1]
 
 for preference, piece in enumerate([King, Pawn, Knight, Bishop, Rook, Queen]):
     piece.move_preference = preference

@@ -115,7 +115,7 @@ class GameModel:
     def action_credits(self, _nick):
         self.add_message('''
             Programming: Yair Chuchem
-            Chess sets/Graphics: Armondo H. Marroquin and Eric Bentzen (http://www.enpassant.dk/chess/fonteng.htm)
+            Chess sets/Graphics: Cburnett
             github.com/yairchu/chess2
             ''')
 

@@ -24,15 +24,6 @@ class BoardView(Widget):
         self.selected = None
         self.is_dragging = False
         self.resized()
-        self.shuffle_sets()
-
-    def shuffle_sets(self):
-        'Randomly change which chess piece images sets are used'
-        a = [0, 2]
-        b = [1, 3]
-        random.shuffle(a)
-        random.shuffle(b)
-        self.chess_sets_perm = [[a, b][i%2][i//2] for i in range(4)]
 
     def show_board(self):
         cols, see = self.board_info()
@@ -49,7 +40,7 @@ class BoardView(Widget):
                     if self.game.board[x, y].freeze_until > self.game.counter:
                         freeze_ratio = (piece.freeze_until - self.game.counter) / piece.freeze_time
                         Color(.7, .7, .7)
-                        Rectangle(pos=(sx, sy), size=(self.square_size * freeze_ratio, self.square_size))
+                        Rectangle(pos=(sx, sy), size=((self.square_size-1) * freeze_ratio, self.square_size-1))
 
             for pos, piece in self.game.board.items():
                 if pos not in see:
@@ -63,21 +54,21 @@ class BoardView(Widget):
                             last_screen_pos = self.screen_pos(piece.last_pos)
                             new_screen_pos = self.screen_pos(pos)
                             Rectangle(
-                                texture=piece.image(self.chess_sets_perm),
+                                texture=piece.image(),
                                 pos=[int(last_screen_pos[i]+(new_screen_pos[i]-last_screen_pos[i])*pos_between) for i in range(2)],
                                 size=sq)
                 if piece is self.selected and self.game.active():
                     transparent = True
                 Color(1, 1, 1, .5 if transparent else 1)
                 Rectangle(
-                    texture=piece.image(self.chess_sets_perm),
+                    texture=piece.image(),
                     pos=self.screen_pos(pos),
                     size=sq)
 
             if self.selected is not None and self.dst_pos is not None and self.game.active():
                 Color(1, 1, 1, .5)
                 Rectangle(
-                    texture=self.selected.image(self.chess_sets_perm),
+                    texture=self.selected.image(),
                     pos=self.screen_pos(self.dst_pos),
                     size=sq)
 
@@ -85,7 +76,7 @@ class BoardView(Widget):
                 x, y = self.raw_mouse_pos
                 Color(1, 1, 1, .5)
                 Rectangle(
-                    texture=self.selected.image(self.chess_sets_perm),
+                    texture=self.selected.image(),
                     pos=(x-self.square_size//2, y-self.square_size//2),
                     size=sq)
 
