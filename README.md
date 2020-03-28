@@ -53,6 +53,10 @@ Chess Chase is played vs friends over the network.
     zip -r "chesschase-mac.zip" "Chess Chase.app"
     xcrun altool -u <APPLE-ID-EMAIL> -p <APP-SPECIFIC-PASSWORD> --notarize-app --primary-bundle-id org.yairchu.chesschase -f chesschase-mac.zip
 
+To find signing id, run:
+
+    security find-identity -v -p codesigning
+
 (this worked for me on macOS 10.14.6 with Python 3.8.2 and kivy v2.0.0rc1)
 
 ### Building a Windows exe
