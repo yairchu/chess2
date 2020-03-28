@@ -153,7 +153,7 @@ class Game(BoxLayout):
                 return
             self.game_model.add_action(*command[1:].split())
             return
-        if self.game_model.mode is None:
+        if self.game_model.mode in [None, 'connect']:
             self.net_engine.connect(command)
             return
         # Chat
