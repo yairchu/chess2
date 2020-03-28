@@ -3,7 +3,7 @@ A networked real-time strategy game based on Chess
 '''
 
 from kivy.app import App
-from kivy.clock import Clock
+from kivy.clock import Clock, mainthread
 from kivy.config import Config
 from kivy.core.window import Window
 from kivy.uix.boxlayout import BoxLayout
@@ -32,7 +32,7 @@ class Game(BoxLayout):
         self.board_view = BoardView(self.game_model)
         self.add_widget(self.board_view)
         self.game_model.on_init.append(self.board_view.reset)
-        self.game_model.on_init.append(self.resized)
+        self.game_model.on_init.append(self.on_game_init)
 
         self.info_pane = BoxLayout(orientation='vertical', size_hint_min_y=500)
         self.add_widget(self.info_pane)
@@ -67,11 +67,17 @@ class Game(BoxLayout):
             text_validate_unfocus=env.is_mobile,
             **row_args)
         self.text_input.bind(on_text_validate=self.handle_text_input)
-        if not env.is_mobile:
-            def steal_focus(*args):
+        if env.is_mobile:
+            self.text_input.keyboard_mode = 'managed'
+            def on_focus(*args):
+                if self.text_input.focus:
+                    self.text_input.show_keyboard()
+        else:
+            def on_focus(*args):
                 if not self.text_input.focus:
+                    # Steal focus
                     self.text_input.focus = True
-            self.text_input.bind(focus=steal_focus)
+        self.text_input.bind(focus=on_focus)
         self.info_pane.add_widget(self.text_input)
 
         self.game_model.add_message('')
@@ -79,6 +85,11 @@ class Game(BoxLayout):
 
         self.bind(size=self.resized)
         Clock.schedule_interval(self.on_clock, 1/30)
+
+    @mainthread
+    def on_game_init(self):
+        if env.is_mobile and self.game_model.mode == 'play':
+            self.text_input.hide_keyboard()
 
     def stop_net_engine(self):
         if not self.net_engine:
@@ -90,6 +101,9 @@ class Game(BoxLayout):
         self.net_engine = NetEngine(self.game_model)
 
     def start_game(self, _):
+        self.text_input.focus = True
+        if env.is_mobile:
+            self.text_input.show_keyboard()
         self.game_model.mode = 'connect'
         self.score = [0, 0]
         self.restart_net_engine()
@@ -99,6 +113,8 @@ class Game(BoxLayout):
         self.net_engine.start()
 
     def start_tutorial(self, i):
+        if env.is_mobile:
+            self.text_input.hide_keyboard()
         self.game_model.mode = 'tutorial'
         self.game_model.reset()
         self.restart_net_engine()
@@ -143,6 +159,8 @@ class Game(BoxLayout):
             self.button_pane.size_hint_min_y = 70
 
     def handle_text_input(self, entry):
+        if env.is_mobile:
+            self.text_input.hide_keyboard()
         command = entry.text
         entry.text = ''
         if not command:
@@ -177,7 +195,8 @@ class Game(BoxLayout):
 class ChessChaseApp(App):
     def build(self):
         self.game = Game()
-        self.game.text_input.focus = True
+        if not env.is_mobile:
+            self.game.text_input.focus = True
         return self.game
     def stop(self):
         self.game.stop_net_engine()

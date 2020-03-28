@@ -49,7 +49,7 @@ Chess Chase is played vs friends over the network.
     rm -r Chess\ Chase.app/Contents/Resources/lib/python3.8/numpy
 
     # Sign and notarize (One needs to join the apple paid developer program for this)
-    codesign --timestamp -s <YOUR_SIGNING_ID> -f --deep Chess\ Chase.app
+    codesign --timestamp -s "Developer ID Application: <YOUR-SIGNING-ID>" -f --deep Chess\ Chase.app
     zip -r "chesschase-mac.zip" "Chess Chase.app"
     xcrun altool -u <APPLE-ID-EMAIL> -p <APP-SPECIFIC-PASSWORD> --notarize-app --primary-bundle-id org.yairchu.chesschase -f chesschase-mac.zip
 

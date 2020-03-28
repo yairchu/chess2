@@ -130,6 +130,7 @@ class NetEngine:
             self.game.add_message('Connection successful!')
             self.game.add_message('THE GAME BEGINS!')
             self.game.mode = 'play'
+            self.game.init()
             self.last_comm_time = time.time()
             self.comm_gap_msg_at = 10
 
