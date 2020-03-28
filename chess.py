@@ -38,6 +38,7 @@ class Piece:
         if self.game.board[self.pos] is not self or pos not in self.moves():
             # Situation changed since move queued, can't perform this move!
             return False
+        self.prev_pos = self.pos
         self._move(pos)
         return True
 
@@ -51,11 +52,13 @@ class Piece:
             self.game.board[pos].die()
         self.game.board[self.pos] = self
         self.freeze_until = self.game.counter+self.freeze_time
-        self.game.player_freeze[self.player] = self.game.counter+self.game.player_freeze_time
+        self.game.player_last_move[self.player] = self.game.counter
 
     def moves(self):
+        freeze_time = self.game.player_freeze_time
         if self.game.counter < max(
-                self.freeze_until, self.game.player_freeze.get(self.player, 0)):
+                self.freeze_until,
+                self.game.player_last_move.get(self.player, -freeze_time) + freeze_time):
             return
         yield from self.base_moves()
 
@@ -162,14 +165,26 @@ class King(Piece):
 class Pawn(Piece):
     sight_color = (0.5, 0.5, 0.5)
     egg_time = 0 if env.dev_mode else 60
+
     def move(self, pos):
+        prev_x, prev_y = self.pos
+        dst_piece = self.game.board.get(pos)
         if not super(Pawn, self).move(pos):
             return False
+
         if (self.side() == 0 and pos[1] == 7) or (self.side() == 1 and pos[1] == 0):
+            # Become Queen
             self.die()
             new_piece = Queen(self.player, pos, self.game)
             new_piece.freeze_until = self.game.counter+self.egg_time
+
+        x, y = pos
+        if dst_piece is None and x != prev_x:
+            # En passant
+            self.game.board[x, prev_y].die()
+
         return True
+
     def sight(self):
         yield from self.base_moves()
         delta = -1 if self.side() else 1
@@ -178,8 +193,13 @@ class Pawn(Piece):
             dst = a, y+delta
             if self.game.in_bounds(dst):
                 yield dst
+        for piece in self.en_passant(x, y):
+            yield piece.pos
+
     def _moves(self, x, y):
         start_row, delta = (6, -1) if self.side() else (1, 1)
+
+        # Move forward
         m = [(x, y+delta)]
         if y == start_row:
             m.append((x, y+2*delta))
@@ -188,9 +208,30 @@ class Pawn(Piece):
                 m = m[:c]
                 break
         yield m
+
+        # Capture
         for a in [x-1, x+1]:
             if (a, y+delta) in self.game.board:
                 yield [(a, y+delta)]
+
+        # En passant
+        for piece in self.en_passant(x, y):
+            yield [(a, y+delta)]
+
+    def en_passant(self, x, y):
+        for a in [x-1, x+1]:
+            piece = self.game.board.get((a, y))
+            if type(piece) != Pawn:
+                continue
+            if piece.player % 2 == self.player % 2:
+                # Same team
+                continue
+            if piece.last_move_time is None:
+                continue
+            if self.game.player_last_move[self.player] > piece.last_move_time:
+                # Already moved after this pawn
+                continue
+            yield piece
 
 first_row = [Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook]
 
