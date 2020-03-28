@@ -38,6 +38,10 @@ class Piece:
         if self.game.board[self.pos] is not self or pos not in self.moves():
             # Situation changed since move queued, can't perform this move!
             return False
+        self._move(pos)
+        return True
+
+    def _move(self, pos):
         assert isinstance(pos[0], int)
         del self.game.board[self.pos]
         self.last_pos = self.pos
@@ -48,7 +52,6 @@ class Piece:
         self.game.board[self.pos] = self
         self.freeze_until = self.game.counter+self.freeze_time
         self.game.player_freeze[self.player] = self.game.counter+self.game.player_freeze_time
-        return True
 
     def moves(self):
         if self.game.counter < max(
@@ -131,12 +134,9 @@ class King(Piece):
         piece = self.castling(sx, sy, dir)
         if piece is None:
             return
-        del self.game.board[self.pos]
-        self.pos = pos
-        self.game.board[pos] = self
-        del self.game.board[piece.pos]
-        piece.pos = (sx + dir, sy)
-        self.game.board[piece.pos] = piece
+        self._move(pos)
+        piece._move((sx + dir, sy))
+        return True
 
     def _moves(self, x, y):
         for a in range(x-1, x+2):
