@@ -41,9 +41,9 @@ Chess Chase is played vs friends over the network.
 ### Building a macOS app
 
     python3 setup.py py2app
-    cd dist
 
     # Remove unneeded resources to reduce app size
+    cd dist
     rm Chess\ Chase.app/Contents/Frameworks/lib*.dylib
     rm -rf Chess\ Chase.app/Contents/Resources/lib/{tcl,tk}*
     rm -r Chess\ Chase.app/Contents/Resources/lib/python3.8/numpy

@@ -120,7 +120,7 @@ class BoardView(Widget):
         if not self.game.active():
             return
         self.calc_mouse_pos(event.pos)
-        if event.is_mouse_scrolling or event.button == 'right':
+        if self.is_choice_event(event):
             if [] == self.potential_pieces:
                 return
             d = -1 if event.button == 'scrollup' else 1
@@ -132,6 +132,11 @@ class BoardView(Widget):
             self.selected = self.game.board[self.mouse_pos]
             self.dst_pos = None
 
+    def is_choice_event(self, event):
+        if env.is_mobile:
+            return False
+        return event.is_mouse_scrolling or event.button == 'right'
+
     def mouse_motion(self, _win, pos):
         if not self.game.active():
             return
@@ -141,7 +146,7 @@ class BoardView(Widget):
     def on_touch_up(self, event):
         if not self.game.active():
             return
-        if event.is_mouse_scrolling or event.button == 'right':
+        if self.is_choice_event(event):
             return
         self.calc_mouse_pos(event.pos)
         self.is_dragging = False
