@@ -124,4 +124,17 @@ class GameModel:
         self.nicknames[i] = nick
 
     def help(self):
+        self.add_message('')
         self.add_message('commands: /help | /nick <name> | /surrender | /credits')
+        self.add_message('')
+        latency = 5
+        rate = 30
+        def calc_cooldown(x):
+            return (x+latency) / rate
+        self.add_message(
+            'Cool-downs: player %.1fs, piece %.1fs, king %.1fs, promotion %.1fs' % (
+                calc_cooldown(self.player_freeze_time),
+                calc_cooldown(chess.Piece.freeze_time),
+                calc_cooldown(chess.King.freeze_time),
+                calc_cooldown(chess.Pawn.egg_time),
+            ))
